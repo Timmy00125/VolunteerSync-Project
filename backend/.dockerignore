@@ -1,0 +1,64 @@
+# Backend .dockerignore
+# Exclude unnecessary files from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+build/
+
+# Test files and coverage
+*_test.go
+**/*_test.go
+coverage.out
+coverage.html
+*.test
+testdata/
+
+# Documentation
+README.md
+*.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Environment and config
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
