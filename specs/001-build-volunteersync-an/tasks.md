@@ -65,7 +65,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Leaflet (maps), Chart.js/Recharts
   - Testing: Jest, React Testing Library, Playwright
 
-- [ ] T006 [P] Configure frontend linting and formatting tools
+- [x] T006 [P] Configure frontend linting and formatting tools
   - Create `frontend/.eslintrc.json` with TypeScript rules
   - Create `frontend/.prettierrc` for code formatting
   - Configure strict TypeScript in `frontend/tsconfig.json`
