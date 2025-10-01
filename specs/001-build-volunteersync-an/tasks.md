@@ -79,7 +79,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Create `docker/frontend.Dockerfile`
   - Create `docker/docker-compose.prod.yml` for production
 
-- [ ] T008 [P] Create database migration structure
+- [x] T008 [P] Create database migration structure
 
   - Create `backend/migrations/000001_initial_schema.up.sql` (empty placeholder)
   - Create `backend/migrations/000001_initial_schema.down.sql` (empty placeholder)

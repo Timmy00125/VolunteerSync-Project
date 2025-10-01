@@ -1,0 +1,20 @@
+-- VolunteerSync Initial Schema Migration (UP)
+-- This file will be populated in Phase 3.3 (Task T046)
+-- 
+-- Expected tables:
+-- - users (with security questions)
+-- - organizations (with geocoding)
+-- - organization_members (junction)
+-- - volunteer_profiles (with availability)
+-- - opportunities (with recurrence support)
+-- - registrations (with hours tracking)
+-- - hours_logs (audit table)
+-- - messages and message_recipients
+-- - notifications
+-- - skills, cause_categories (lookup tables)
+-- - achievements and volunteer_achievements
+-- - documents, teams, team_members
+-- - All junction tables for N:M relationships
+-- - Indexes on foreign keys and frequently queried fields
+
+-- Placeholder: Content will be added in Phase 3.3
