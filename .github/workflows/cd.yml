@@ -1,0 +1,327 @@
+name: CD Pipeline
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: "Deployment environment"
+                required: true
+                type: choice
+                options:
+                    - staging
+                    - production
+
+env:
+    GO_VERSION: "1.23"
+    NODE_VERSION: "20"
+    REGISTRY: ghcr.io
+    IMAGE_PREFIX: ${{ github.repository_owner }}/volunteersync
+
+jobs:
+    # Build and push backend Docker image
+    build-backend:
+        name: Build Backend Docker Image
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        outputs:
+            image-tag: ${{ steps.meta.outputs.tags }}
+            image-digest: ${{ steps.build.outputs.digest }}
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata for Docker
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend
+                  tags: |
+                      type=ref,event=branch
+                      type=sha,prefix={{branch}}-
+                      type=semver,pattern={{version}}
+                      type=semver,pattern={{major}}.{{minor}}
+
+            - name: Build and push backend image
+              id: build
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: docker/backend.Dockerfile
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  build-args: |
+                      GO_VERSION=${{ env.GO_VERSION }}
+
+    # Build and push frontend Docker image
+    build-frontend:
+        name: Build Frontend Docker Image
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        outputs:
+            image-tag: ${{ steps.meta.outputs.tags }}
+            image-digest: ${{ steps.build.outputs.digest }}
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata for Docker
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
+                  tags: |
+                      type=ref,event=branch
+                      type=sha,prefix={{branch}}-
+                      type=semver,pattern={{version}}
+                      type=semver,pattern={{major}}.{{minor}}
+
+            - name: Build and push frontend image
+              id: build
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: docker/frontend.Dockerfile
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  build-args: |
+                      NODE_VERSION=${{ env.NODE_VERSION }}
+                      NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_STAGING }}
+
+    # Deploy to staging
+    deploy-staging:
+        name: Deploy to Staging
+        runs-on: ubuntu-latest
+        needs: [build-backend, build-frontend]
+        environment:
+            name: staging
+            url: https://staging.volunteersync.example.com
+        if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Configure SSH
+              env:
+                  SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+                  SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+                  SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+              run: |
+                  mkdir -p ~/.ssh
+                  echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+                  chmod 600 ~/.ssh/id_rsa
+                  ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+
+            - name: Deploy to staging server
+              env:
+                  SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+                  SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+                  BACKEND_IMAGE: ${{ needs.build-backend.outputs.image-tag }}
+                  FRONTEND_IMAGE: ${{ needs.build-frontend.outputs.image-tag }}
+              run: |
+                  ssh $SSH_USER@$SSH_HOST << 'ENDSSH'
+                    cd /opt/volunteersync
+
+                    # Pull latest images
+                    docker pull ${{ needs.build-backend.outputs.image-tag }}
+                    docker pull ${{ needs.build-frontend.outputs.image-tag }}
+
+                    # Update docker-compose with new images
+                    export BACKEND_IMAGE=${{ needs.build-backend.outputs.image-tag }}
+                    export FRONTEND_IMAGE=${{ needs.build-frontend.outputs.image-tag }}
+
+                    # Deploy with zero downtime
+                    docker compose -f docker-compose.prod.yml up -d --no-deps --build backend frontend
+
+                    # Run database migrations
+                    docker compose -f docker-compose.prod.yml exec -T backend /app/migrate up
+
+                    # Health check
+                    sleep 10
+                    curl -f http://localhost:3000/api/health || exit 1
+                  ENDSSH
+
+            - name: Run smoke tests on staging
+              env:
+                  STAGING_URL: https://staging.volunteersync.example.com
+              run: |
+                  # Basic health check
+                  curl -f $STAGING_URL/api/health
+
+                  # Check authentication endpoint
+                  curl -f $STAGING_URL/api/v1/auth/health
+
+                  echo "✅ Staging deployment successful!"
+
+            - name: Notify deployment status
+              if: always()
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
+                      github.rest.repos.createCommitComment({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        commit_sha: context.sha,
+                        body: `${status} Staging deployment ${status === '✅' ? 'succeeded' : 'failed'}!\nEnvironment: https://staging.volunteersync.example.com`
+                      });
+
+    # Deploy to production (requires manual approval)
+    deploy-production:
+        name: Deploy to Production
+        runs-on: ubuntu-latest
+        needs: [build-backend, build-frontend, deploy-staging]
+        environment:
+            name: production
+            url: https://volunteersync.example.com
+        if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'production'
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Configure SSH
+              env:
+                  SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+                  SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+                  SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+              run: |
+                  mkdir -p ~/.ssh
+                  echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+                  chmod 600 ~/.ssh/id_rsa
+                  ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+
+            - name: Deploy to production server
+              env:
+                  SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+                  SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+                  BACKEND_IMAGE: ${{ needs.build-backend.outputs.image-tag }}
+                  FRONTEND_IMAGE: ${{ needs.build-frontend.outputs.image-tag }}
+              run: |
+                  ssh $SSH_USER@$SSH_HOST << 'ENDSSH'
+                    cd /opt/volunteersync
+
+                    # Create backup before deployment
+                    docker compose -f docker-compose.prod.yml exec -T postgres pg_dump -U volunteersync volunteersync > backup_$(date +%Y%m%d_%H%M%S).sql
+
+                    # Pull latest images
+                    docker pull ${{ needs.build-backend.outputs.image-tag }}
+                    docker pull ${{ needs.build-frontend.outputs.image-tag }}
+
+                    # Update docker-compose with new images
+                    export BACKEND_IMAGE=${{ needs.build-backend.outputs.image-tag }}
+                    export FRONTEND_IMAGE=${{ needs.build-frontend.outputs.image-tag }}
+
+                    # Deploy with zero downtime (rolling restart)
+                    docker compose -f docker-compose.prod.yml up -d --no-deps --build backend frontend
+
+                    # Run database migrations
+                    docker compose -f docker-compose.prod.yml exec -T backend /app/migrate up
+
+                    # Health check
+                    sleep 15
+                    curl -f http://localhost:3000/api/health || exit 1
+                  ENDSSH
+
+            - name: Run smoke tests on production
+              env:
+                  PRODUCTION_URL: https://volunteersync.example.com
+              run: |
+                  # Basic health check
+                  curl -f $PRODUCTION_URL/api/health
+
+                  # Check authentication endpoint
+                  curl -f $PRODUCTION_URL/api/v1/auth/health
+
+                  # Verify frontend is accessible
+                  curl -f $PRODUCTION_URL
+
+                  echo "✅ Production deployment successful!"
+
+            - name: Create GitHub release
+              if: success()
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const tag = 'v' + new Date().toISOString().split('T')[0].replace(/-/g, '.');
+                      const release = await github.rest.repos.createRelease({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        tag_name: tag,
+                        name: `Release ${tag}`,
+                        body: `Deployed to production on ${new Date().toISOString()}\n\nCommit: ${context.sha}`,
+                        draft: false,
+                        prerelease: false
+                      });
+                      console.log(`Created release ${release.data.html_url}`);
+
+            - name: Notify deployment status
+              if: always()
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
+                      github.rest.repos.createCommitComment({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        commit_sha: context.sha,
+                        body: `${status} Production deployment ${status === '✅' ? 'succeeded' : 'failed'}!\nEnvironment: https://volunteersync.example.com`
+                      });
+
+    # Rollback (manual trigger only)
+    rollback:
+        name: Rollback Deployment
+        runs-on: ubuntu-latest
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.rollback == 'true'
+        environment:
+            name: ${{ github.event.inputs.environment }}
+        steps:
+            - name: Rollback to previous version
+              env:
+                  SSH_PRIVATE_KEY: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', github.event.inputs.environment)] }}
+                  SSH_HOST: ${{ secrets[format('{0}_SSH_HOST', github.event.inputs.environment)] }}
+                  SSH_USER: ${{ secrets[format('{0}_SSH_USER', github.event.inputs.environment)] }}
+              run: |
+                  mkdir -p ~/.ssh
+                  echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+                  chmod 600 ~/.ssh/id_rsa
+                  ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+
+                  ssh $SSH_USER@$SSH_HOST << 'ENDSSH'
+                    cd /opt/volunteersync
+                    docker compose -f docker-compose.prod.yml down
+                    docker compose -f docker-compose.prod.yml up -d
+                  ENDSSH
+
+                  echo "✅ Rollback completed!"

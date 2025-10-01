@@ -85,7 +85,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Create `backend/migrations/000001_initial_schema.down.sql` (empty placeholder)
   - Create migration script `backend/scripts/migrate.sh`
 
-- [ ] T009 [P] Create GitHub Actions CI/CD pipelines
+- [x] T009 [P] Create GitHub Actions CI/CD pipelines
   - Create `.github/workflows/ci.yml` (tests, linting)
   - Create `.github/workflows/cd.yml` (build, deploy)
   - Create `.github/workflows/security.yml` (dependency scanning)
