@@ -51,12 +51,12 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend Setup
 
-- [ ] T004 [P] Initialize Next.js 15 project in `frontend/`
+- [x] T004 [P] Initialize Next.js 15 project in `frontend/`
 
   - Run `npx create-next-app@latest` with App Router, TypeScript, Tailwind
   - Create directory structure: `src/app/`, `src/components/`, `src/lib/`, `tests/`
 
-- [ ] T005 [P] Install frontend dependencies in `frontend/package.json`
+- [x] T005 [P] Install frontend dependencies in `frontend/package.json`
 
   - React 19, Next.js 15
   - Tailwind CSS, shadcn/ui components
