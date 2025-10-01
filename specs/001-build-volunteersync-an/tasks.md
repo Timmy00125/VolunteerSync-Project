@@ -28,7 +28,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Backend Setup
 
-- [ ] T001 [P] Initialize Go module and project structure in `backend/`
+- [x] T001 [P] Initialize Go module and project structure in `backend/`
 
   - Create `backend/go.mod` with Go 1.25
   - Create directory structure: `cmd/api/`, `internal/modules/`, `internal/middleware/`, `internal/pkg/`, `migrations/`, `tests/`
