@@ -34,7 +34,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Create directory structure: `cmd/api/`, `internal/modules/`, `internal/middleware/`, `internal/pkg/`, `migrations/`, `tests/`
   - Initialize git repository if not exists
 
-- [ ] T002 [P] Install backend dependencies in `backend/go.mod`
+- [x] T002 [P] Install backend dependencies in `backend/go.mod`
 
   - Gin framework (github.com/gin-gonic/gin)
   - GORM (gorm.io/gorm, gorm.io/driver/postgres)
