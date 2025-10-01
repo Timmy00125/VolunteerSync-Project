@@ -65,6 +65,51 @@ go test ./tests/contract/...
 go test ./... -cover
 ```
 
+### Linting and Formatting
+
+This project uses `golangci-lint` for code quality checks and `gofmt` for formatting.
+
+```bash
+# Format code
+go fmt ./...
+goimports -w .
+
+# Run linter
+./scripts/lint.sh
+# or directly:
+golangci-lint run --config .golangci.yml ./...
+
+# Install golangci-lint
+# macOS
+brew install golangci-lint
+
+# Linux/WSL
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+
+# Or see: https://golangci-lint.run/usage/install/
+```
+
+**Pre-commit Hooks** (recommended):
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Setup hooks
+cd backend
+pre-commit install
+
+# Run manually on all files
+pre-commit run --all-files
+```
+
+The pre-commit hooks will automatically:
+
+- Format code with `gofmt` and `goimports`
+- Run `golangci-lint` to catch issues
+- Check for common problems (trailing whitespace, merge conflicts, etc.)
+- Detect secrets and sensitive data
+
 ## Development
 
 ### Code Style

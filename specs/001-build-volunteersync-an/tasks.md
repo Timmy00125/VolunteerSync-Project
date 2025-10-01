@@ -44,7 +44,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - golang-migrate (github.com/golang-migrate/migrate/v4)
   - Testing: testify (github.com/stretchr/testify), testcontainers-go
 
-- [ ] T003 [P] Configure backend linting and formatting tools
+- [x] T003 [P] Configure backend linting and formatting tools
   - Create `backend/.golangci.yml` with linting rules
   - Configure gofmt, golangci-lint
   - Add pre-commit hooks

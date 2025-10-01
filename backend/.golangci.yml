@@ -1,0 +1,57 @@
+version: "1"
+
+# golangci-lint configuration for VolunteerSync backend
+# Documentation: https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  tests: true
+  build-tags:
+    - integration
+  modules-download-mode: readonly
+  go: '1.25'
+
+linters:
+  enable:
+    # Default linters
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Reports suspicious constructs
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Advanced static analysis
+    - typecheck     # Type-check Go code
+    - unused        # Find unused code
+    
+    # Additional recommended linters
+    - gofmt         # Check code formatting
+    - goimports     # Check import order and formatting
+    - misspell      # Fix commonly misspelled words
+    - revive        # Fast, configurable Go linter
+    - gosec         # Security-focused linter
+    - goconst       # Find repeated strings that could be constants
+    - gocyclo       # Cyclomatic complexity
+    - bodyclose     # Check HTTP response body is closed
+    - errname       # Check error naming conventions
+    - errorlint     # Find misuse of errors
+    - gocritic      # Most opinionated Go linter
+    - godot         # Check comment sentences end with period
+    - nakedret      # Find naked returns in long functions
+    - nestif        # Reports deeply nested if statements
+    - noctx         # Find http requests without context.Context
+    - nolintlint    # Reports ill-formed or insufficient nolint directives
+    - prealloc      # Find slice declarations that could preallocate
+    - unconvert     # Remove unnecessary type conversions
+    - unparam       # Find unused function parameters
+    - whitespace    # Tool for detection of leading and trailing whitespace
+    
+  disable:
+    - stylecheck    # Too opinionated for this project
+    - funlen        # Function length (handled by gocyclo)
+    - lll           # Line length (handled by editor)
+    - exhaustruct   # Check struct initialization (too strict)
+    - varnamelen    # Variable name length (too opinionated)
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
