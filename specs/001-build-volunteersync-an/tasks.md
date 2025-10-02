@@ -208,23 +208,23 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Registrations Contract Tests
 
-- [ ] T028 [P] Contract test POST /api/v1/registrations in `backend/tests/contract/registrations_create_test.go`
+- [x] T028 [P] Contract test POST /api/v1/registrations in `backend/tests/contract/registrations_create_test.go`
 
   - Test immediate registration
   - Test waitlist when at capacity
   - Test duplicate registration prevention
   - Test overlapping event warning
 
-- [ ] T029 [P] Contract test PATCH /api/v1/registrations/{id}/cancel in `backend/tests/contract/registrations_cancel_test.go`
+- [x] T029 [P] Contract test PATCH /api/v1/registrations/{id}/cancel in `backend/tests/contract/registrations_cancel_test.go`
 
   - Test cancellation
   - Test late cancellation warning (within 24 hours)
 
-- [ ] T030 [P] Contract test PATCH /api/v1/registrations/{id}/check-in in `backend/tests/contract/registrations_checkin_test.go`
+- [x] T030 [P] Contract test PATCH /api/v1/registrations/{id}/check-in in `backend/tests/contract/registrations_checkin_test.go`
 
   - Test volunteer check-in on event day
 
-- [ ] T031 [P] Contract test GET /api/v1/registrations/{id}/calendar.ics in `backend/tests/contract/registrations_calendar_test.go`
+- [x] T031 [P] Contract test GET /api/v1/registrations/{id}/calendar.ics in `backend/tests/contract/registrations_calendar_test.go`
   - Test .ics file download
 
 ### Hours Tracking Contract Tests
