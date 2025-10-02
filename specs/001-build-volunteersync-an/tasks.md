@@ -106,7 +106,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test weak password (400 error)
   - Test rate limiting (429 error after 5 attempts)
 
-- [ ] T011 [P] Contract test POST /api/v1/auth/login in `backend/tests/contract/auth_login_test.go`
+- [x] T011 [P] Contract test POST /api/v1/auth/login in `backend/tests/contract/auth_login_test.go`
 
   - Test valid login credentials
   - Test invalid credentials (401 error)
