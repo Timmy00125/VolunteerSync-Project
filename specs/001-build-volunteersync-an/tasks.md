@@ -191,7 +191,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test geocoding on address save
   - Test recurring opportunity creation
 
-- [ ] T025 [P] Contract test GET /api/v1/opportunities in `backend/tests/contract/opportunities_list_test.go`
+- [x] T025 [P] Contract test GET /api/v1/opportunities in `backend/tests/contract/opportunities_list_test.go`
 
   - Test search with location radius
   - Test filtering by date range, cause, skills
