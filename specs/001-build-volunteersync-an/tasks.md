@@ -113,7 +113,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test rate limiting (429 error after 5 attempts)
   - Test JWT token format and expiry
 
-- [ ] T012 [P] Contract test POST /api/v1/auth/refresh in `backend/tests/contract/auth_refresh_test.go`
+- [x] T012 [P] Contract test POST /api/v1/auth/refresh in `backend/tests/contract/auth_refresh_test.go`
 
   - Test valid refresh token
   - Test expired refresh token (401 error)
