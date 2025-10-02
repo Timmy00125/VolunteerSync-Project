@@ -229,18 +229,18 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Hours Tracking Contract Tests
 
-- [ ] T032 [P] Contract test POST /api/v1/hours/log in `backend/tests/contract/hours_log_test.go`
+- [x] T032 [P] Contract test POST /api/v1/hours/log in `backend/tests/contract/hours_log_test.go`
 
   - Test hours logging by coordinator
   - Test pending status on creation
   - Test notification to volunteer
 
-- [ ] T033 [P] Contract test POST /api/v1/hours/{id}/verify in `backend/tests/contract/hours_verify_test.go`
+- [x] T033 [P] Contract test POST /api/v1/hours/{id}/verify in `backend/tests/contract/hours_verify_test.go`
 
   - Test volunteer verification
   - Test total hours increment
 
-- [ ] T034 [P] Contract test POST /api/v1/hours/{id}/dispute in `backend/tests/contract/hours_dispute_test.go`
+- [x] T034 [P] Contract test POST /api/v1/hours/{id}/dispute in `backend/tests/contract/hours_dispute_test.go`
   - Test hours dispute by volunteer
   - Test coordinator notification
 
