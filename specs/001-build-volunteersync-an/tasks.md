@@ -131,7 +131,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Users Contract Tests
 
-- [ ] T015 [P] Contract test GET /api/v1/users/me in `backend/tests/contract/users_get_me_test.go`
+- [x] T015 [P] Contract test GET /api/v1/users/me in `backend/tests/contract/users_get_me_test.go`
 
   - Test authenticated user retrieval
   - Test without authentication (401 error)
