@@ -124,7 +124,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test successful logout with valid token
   - Test logout without authentication (401 error)
 
-- [ ] T014 [P] Contract test password reset flow in `backend/tests/contract/auth_password_reset_test.go`
+- [x] T014 [P] Contract test password reset flow in `backend/tests/contract/auth_password_reset_test.go`
   - Test POST /api/v1/auth/password-reset/request
   - Test POST /api/v1/auth/password-reset/verify (2 of 3 security questions correct)
   - Test POST /api/v1/auth/password-reset/confirm
