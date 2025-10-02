@@ -165,7 +165,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test organization update by admin
   - Test unauthorized update (403 error)
 
-- [ ] T021 [P] Contract test GET /api/v1/organizations in `backend/tests/contract/organizations_list_test.go`
+- [x] T021 [P] Contract test GET /api/v1/organizations in `backend/tests/contract/organizations_list_test.go`
   - Test list with pagination
   - Test filtering by cause, location
   - Test search by name
