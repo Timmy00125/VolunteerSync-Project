@@ -98,7 +98,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Authentication Contract Tests
 
-- [ ] T010 [P] Contract test POST /api/v1/auth/register in `backend/tests/contract/auth_register_test.go`
+- [x] T010 [P] Contract test POST /api/v1/auth/register in `backend/tests/contract/auth_register_test.go`
 
   - Test valid registration with all required fields
   - Test missing required fields (400 error)
