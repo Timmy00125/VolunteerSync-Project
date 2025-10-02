@@ -136,7 +136,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test authenticated user retrieval
   - Test without authentication (401 error)
 
-- [ ] T016 [P] Contract test PATCH /api/v1/users/me in `backend/tests/contract/users_update_me_test.go`
+- [x] T016 [P] Contract test PATCH /api/v1/users/me in `backend/tests/contract/users_update_me_test.go`
 
   - Test profile update with valid data
   - Test email change (requires reverification)
