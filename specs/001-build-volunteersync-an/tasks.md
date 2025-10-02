@@ -160,7 +160,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test public organization retrieval
   - Test organization not found (404 error)
 
-- [ ] T020 [P] Contract test PATCH /api/v1/organizations/{id} in `backend/tests/contract/organizations_update_test.go`
+- [x] T020 [P] Contract test PATCH /api/v1/organizations/{id} in `backend/tests/contract/organizations_update_test.go`
 
   - Test organization update by admin
   - Test unauthorized update (403 error)
