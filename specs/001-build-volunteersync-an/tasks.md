@@ -148,7 +148,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Organizations Contract Tests
 
-- [ ] T018 [P] Contract test POST /api/v1/organizations in `backend/tests/contract/organizations_create_test.go`
+- [x] T018 [P] Contract test POST /api/v1/organizations in `backend/tests/contract/organizations_create_test.go`
 
   - Test organization creation with required fields
   - Test auto-verification on creation
