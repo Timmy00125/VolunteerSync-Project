@@ -172,7 +172,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Volunteers Contract Tests
 
-- [ ] T022 [P] Contract test PATCH /api/v1/volunteers/me in `backend/tests/contract/volunteers_update_test.go`
+- [x] T022 [P] Contract test PATCH /api/v1/volunteers/me in `backend/tests/contract/volunteers_update_test.go`
 
   - Test volunteer profile update
   - Test skill and interest associations
