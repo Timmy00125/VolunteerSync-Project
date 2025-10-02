@@ -178,7 +178,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test skill and interest associations
   - Test availability settings
 
-- [ ] T023 [P] Contract test GET /api/v1/volunteers/me/dashboard in `backend/tests/contract/volunteers_dashboard_test.go`
+- [x] T023 [P] Contract test GET /api/v1/volunteers/me/dashboard in `backend/tests/contract/volunteers_dashboard_test.go`
   - Test dashboard with impact metrics
   - Test empty state for new volunteers
 
