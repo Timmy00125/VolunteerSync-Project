@@ -184,7 +184,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Opportunities Contract Tests
 
-- [ ] T024 [P] Contract test POST /api/v1/opportunities in `backend/tests/contract/opportunities_create_test.go`
+- [x] T024 [P] Contract test POST /api/v1/opportunities in `backend/tests/contract/opportunities_create_test.go`
 
   - Test opportunity creation by coordinator
   - Test immediate publish vs draft
