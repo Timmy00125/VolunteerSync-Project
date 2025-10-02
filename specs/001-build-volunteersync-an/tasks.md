@@ -197,7 +197,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test filtering by date range, cause, skills
   - Test performance (<2 seconds for up to 100 results)
 
-- [ ] T026 [P] Contract test GET /api/v1/opportunities/{id} in `backend/tests/contract/opportunities_get_test.go`
+- [x] T026 [P] Contract test GET /api/v1/opportunities/{id} in `backend/tests/contract/opportunities_get_test.go`
 
   - Test public opportunity detail retrieval
   - Test capacity display
