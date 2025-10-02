@@ -246,17 +246,17 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Communications Contract Tests
 
-- [ ] T035 [P] Contract test POST /api/v1/messages in `backend/tests/contract/messages_create_test.go`
+- [x] T035 [P] Contract test POST /api/v1/messages in `backend/tests/contract/messages_create_test.go`
 
   - Test direct message creation
   - Test broadcast message to event volunteers
 
-- [ ] T036 [P] Contract test GET /api/v1/notifications in `backend/tests/contract/notifications_list_test.go`
+- [x] T036 [P] Contract test GET /api/v1/notifications in `backend/tests/contract/notifications_list_test.go`
 
   - Test notification list with pagination
   - Test unread count
 
-- [ ] T037 [P] Contract test PATCH /api/v1/notifications/{id}/read in `backend/tests/contract/notifications_read_test.go`
+- [x] T037 [P] Contract test PATCH /api/v1/notifications/{id}/read in `backend/tests/contract/notifications_read_test.go`
   - Test mark notification as read
 
 ### Integration Tests from Quickstart
