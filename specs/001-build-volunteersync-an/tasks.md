@@ -142,7 +142,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test email change (requires reverification)
   - Test invalid data (400 error)
 
-- [ ] T017 [P] Contract test DELETE /api/v1/users/me/delete in `backend/tests/contract/users_delete_test.go`
+- [x] T017 [P] Contract test DELETE /api/v1/users/me/delete in `backend/tests/contract/users_delete_test.go`
   - Test account deletion request
   - Test data retention compliance
 
