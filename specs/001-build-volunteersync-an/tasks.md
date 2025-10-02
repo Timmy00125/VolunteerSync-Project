@@ -119,7 +119,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test expired refresh token (401 error)
   - Test invalid refresh token (401 error)
 
-- [ ] T013 [P] Contract test POST /api/v1/auth/logout in `backend/tests/contract/auth_logout_test.go`
+- [x] T013 [P] Contract test POST /api/v1/auth/logout in `backend/tests/contract/auth_logout_test.go`
 
   - Test successful logout with valid token
   - Test logout without authentication (401 error)
