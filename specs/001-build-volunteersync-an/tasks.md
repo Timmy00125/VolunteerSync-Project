@@ -155,7 +155,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test slug generation from name
   - Test missing required fields (400 error)
 
-- [ ] T019 [P] Contract test GET /api/v1/organizations/{id} in `backend/tests/contract/organizations_get_test.go`
+- [x] T019 [P] Contract test GET /api/v1/organizations/{id} in `backend/tests/contract/organizations_get_test.go`
 
   - Test public organization retrieval
   - Test organization not found (404 error)
