@@ -202,7 +202,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Test public opportunity detail retrieval
   - Test capacity display
 
-- [ ] T027 [P] Contract test PATCH /api/v1/opportunities/{id} in `backend/tests/contract/opportunities_update_test.go`
+- [x] T027 [P] Contract test PATCH /api/v1/opportunities/{id} in `backend/tests/contract/opportunities_update_test.go`
   - Test update by coordinator
   - Test cannot edit past events
 
