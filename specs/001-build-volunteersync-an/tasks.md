@@ -369,7 +369,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Authentication Module
 
-- [ ] T053 [P] User model in `backend/internal/modules/auth/models/user.go`
+- [x] T053 [P] User model in `backend/internal/modules/auth/models/user.go`
 
   - User struct with GORM tags
   - Password hashing with Argon2
