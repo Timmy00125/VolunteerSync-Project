@@ -315,7 +315,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Database Schema & Migrations
 
-- [ ] T046 Create initial database migration in `backend/migrations/000001_initial_schema.up.sql`
+- [x] T046 Create initial database migration in `backend/migrations/000001_initial_schema.up.sql`
 
   - Users table with security questions
   - Organizations table with geocoding
