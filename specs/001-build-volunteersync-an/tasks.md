@@ -297,16 +297,16 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend E2E Tests
 
-- [ ] T043 [P] E2E test authentication flow in `frontend/tests/e2e/auth.spec.ts`
+- [x] T043 [P] E2E test authentication flow in `frontend/tests/e2e/auth.spec.ts`
 
   - Test registration, login, logout
   - Test password reset with security questions
 
-- [ ] T044 [P] E2E test volunteer journey in `frontend/tests/e2e/volunteer_journey.spec.ts`
+- [x] T044 [P] E2E test volunteer journey in `frontend/tests/e2e/volunteer_journey.spec.ts`
 
   - Test profile creation, opportunity search, registration, hours verification
 
-- [ ] T045 [P] E2E test organization journey in `frontend/tests/e2e/org_journey.spec.ts`
+- [x] T045 [P] E2E test organization journey in `frontend/tests/e2e/org_journey.spec.ts`
   - Test org creation, opportunity posting, hours logging
 
 ---
