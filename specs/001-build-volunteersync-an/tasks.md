@@ -375,7 +375,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Password hashing with Argon2
   - Security questions hashing
 
-- [ ] T054 [P] Auth repository in `backend/internal/modules/auth/repositories/auth_repository.go`
+- [x] T054 [P] Auth repository in `backend/internal/modules/auth/repositories/auth_repository.go`
 
   - CreateUser with transaction
   - FindUserByEmail
