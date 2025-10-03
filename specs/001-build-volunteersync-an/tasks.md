@@ -382,7 +382,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - UpdatePassword
   - GetSecurityQuestions
 
-- [ ] T055 Auth service in `backend/internal/modules/auth/services/auth_service.go`
+- [x] T055 Auth service in `backend/internal/modules/auth/services/auth_service.go`
 
   - Register user (validate, hash password, create user, generate tokens)
   - Login user (validate credentials, generate tokens)
