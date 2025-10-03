@@ -343,7 +343,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Connection pooling configuration
   - Health check endpoint
 
-- [ ] T049 [P] Redis cache utilities in `backend/internal/pkg/cache/redis.go`
+- [x] T049 [P] Redis cache utilities in `backend/internal/pkg/cache/redis.go`
 
   - Redis client initialization
   - Cache helper functions (Get, Set, Delete)
