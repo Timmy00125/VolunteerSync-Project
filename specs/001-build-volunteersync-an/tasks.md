@@ -391,7 +391,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Password reset flow (verify security questions, reset password)
   - Account status checks (inactive after 12 months)
 
-- [ ] T056 Auth handlers in `backend/internal/modules/auth/handlers/auth_handlers.go`
+- [x] T056 Auth handlers in `backend/internal/modules/auth/handlers/auth_handlers.go`
   - POST /auth/register handler
   - POST /auth/login handler with rate limiting
   - POST /auth/refresh handler
