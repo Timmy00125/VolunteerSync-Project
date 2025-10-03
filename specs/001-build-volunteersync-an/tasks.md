@@ -362,7 +362,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Error response formatting
   - Logging integration
 
-- [ ] T052 [P] Structured logging setup in `backend/internal/pkg/logger/logger.go`
+- [x] T052 [P] Structured logging setup in `backend/internal/pkg/logger/logger.go`
   - Initialize zerolog or zap
   - Contextual logging with request IDs
   - No PII in logs
