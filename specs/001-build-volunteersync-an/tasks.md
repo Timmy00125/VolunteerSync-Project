@@ -332,7 +332,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - All junction tables for N:M relationships
   - Indexes on foreign keys and frequently queried fields
 
-- [ ] T047 Create migration down script in `backend/migrations/000001_initial_schema.down.sql`
+- [x] T047 Create migration down script in `backend/migrations/000001_initial_schema.down.sql`
   - Drop all tables in reverse dependency order
 
 ### Shared Infrastructure
