@@ -261,20 +261,20 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Integration Tests from Quickstart
 
-- [ ] T038 [P] Integration test Story 1 (Org Onboarding) in `backend/tests/integration/story1_org_onboarding_test.go`
+- [x] T038 [P] Integration test Story 1 (Org Onboarding) in `backend/tests/integration/story1_org_onboarding_test.go`
 
   - Scenario 1.1: Organization admin registration
   - Scenario 1.2: Create organization profile (auto-verify, geocode)
   - Scenario 1.3: Create and publish volunteer opportunity
 
-- [ ] T039 [P] Integration test Story 2 (Volunteer Discovery) in `backend/tests/integration/story2_volunteer_discovery_test.go`
+- [x] T039 [P] Integration test Story 2 (Volunteer Discovery) in `backend/tests/integration/story2_volunteer_discovery_test.go`
 
   - Scenario 2.1: Volunteer registration
   - Scenario 2.2: Complete volunteer profile (geocode, skills, interests)
   - Scenario 2.3: Search for opportunities (<2s performance)
   - Scenario 2.4: Register for opportunity (notification, capacity update)
 
-- [ ] T040 [P] Integration test Story 3 (Event Operations) in `backend/tests/integration/story3_event_operations_test.go`
+- [x] T040 [P] Integration test Story 3 (Event Operations) in `backend/tests/integration/story3_event_operations_test.go`
 
   - Scenario 3.1: Event reminder notifications (24h, 2h)
   - Scenario 3.2: Volunteer check-in
@@ -283,13 +283,13 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Scenario 3.5: Auto-verify hours after 7 days
   - Scenario 3.6: Volunteer reviews event
 
-- [ ] T041 [P] Integration test Story 4 (Impact Tracking) in `backend/tests/integration/story4_impact_tracking_test.go`
+- [x] T041 [P] Integration test Story 4 (Impact Tracking) in `backend/tests/integration/story4_impact_tracking_test.go`
 
   - Scenario 4.1: View personal dashboard with metrics
   - Scenario 4.2: Achievement badge earned (First Event badge)
   - Scenario 4.3: Download impact report PDF
 
-- [ ] T042 [P] Integration test Story 5 (Edge Cases) in `backend/tests/integration/story5_edge_cases_test.go`
+- [x] T042 [P] Integration test Story 5 (Edge Cases) in `backend/tests/integration/story5_edge_cases_test.go`
   - Scenario 5.1: Event at capacity → waitlist
   - Scenario 5.2: Late cancellation warning
   - Scenario 5.3: Overlapping events warning
