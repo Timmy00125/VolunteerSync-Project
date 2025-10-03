@@ -349,7 +349,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Cache helper functions (Get, Set, Delete)
   - Session storage
 
-- [ ] T050 [P] JWT utilities in `backend/internal/pkg/jwt/jwt.go`
+- [x] T050 [P] JWT utilities in `backend/internal/pkg/jwt/jwt.go`
 
   - Generate access token (15 minutes)
   - Generate refresh token (7 days)
