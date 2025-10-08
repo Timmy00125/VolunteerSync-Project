@@ -475,12 +475,12 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Opportunities Module
 
-- [ ] T067 [P] Opportunity model in `backend/internal/modules/opportunities/models/opportunity.go`
+- [x] T067 [P] Opportunity model in `backend/internal/modules/opportunities/models/opportunity.go`
 
   - Opportunity struct with recurrence fields
   - Status enum (draft, published, cancelled, completed)
 
-- [ ] T068 [P] Opportunity repository in `backend/internal/modules/opportunities/repositories/opp_repository.go`
+- [x] T068 [P] Opportunity repository in `backend/internal/modules/opportunities/repositories/opp_repository.go`
 
   - CreateOpportunity
   - FindOpportunityById
@@ -489,7 +489,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - IncrementRegistrations, DecrementRegistrations
   - CreateRecurringInstances
 
-- [ ] T069 Opportunity service in `backend/internal/modules/opportunities/services/opp_service.go`
+- [x] T069 Opportunity service in `backend/internal/modules/opportunities/services/opp_service.go`
 
   - CreateOpportunity (geocode, publish immediately or draft)
   - GetOpportunity (with registration count)
@@ -499,7 +499,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - CompleteOpportunity (auto-complete 7 days after end)
   - CreateRecurringOpportunities (generate child instances)
 
-- [ ] T070 Opportunity handlers in `backend/internal/modules/opportunities/handlers/opp_handlers.go`
+- [x] T070 Opportunity handlers in `backend/internal/modules/opportunities/handlers/opp_handlers.go`
   - POST /opportunities handler
   - GET /opportunities/{id} handler
   - PATCH /opportunities/{id} handler
