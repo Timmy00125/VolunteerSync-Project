@@ -507,12 +507,12 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Registrations Module
 
-- [ ] T071 [P] Registration model in `backend/internal/modules/registrations/models/registration.go`
+- [x] T071 [P] Registration model in `backend/internal/modules/registrations/models/registration.go`
 
   - Registration struct with status enum
   - Hours tracking fields
 
-- [ ] T072 [P] Registration repository in `backend/internal/modules/registrations/repositories/reg_repository.go`
+- [x] T072 [P] Registration repository in `backend/internal/modules/registrations/repositories/reg_repository.go`
 
   - CreateRegistration
   - FindRegistrationById
@@ -522,7 +522,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - CheckIn
   - CancelRegistration
 
-- [ ] T073 Registration service in `backend/internal/modules/registrations/services/reg_service.go`
+- [x] T073 Registration service in `backend/internal/modules/registrations/services/reg_service.go`
 
   - RegisterVolunteer (check capacity, check duplicates, check overlaps, add to waitlist if full)
   - CancelRegistration (late cancellation warning, notify org)
@@ -531,7 +531,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - ListVolunteerRegistrations
   - GenerateCalendarFile (.ics download)
 
-- [ ] T074 Registration handlers in `backend/internal/modules/registrations/handlers/reg_handlers.go`
+- [x] T074 Registration handlers in `backend/internal/modules/registrations/handlers/reg_handlers.go`
   - POST /registrations handler
   - PATCH /registrations/{id}/cancel handler
   - PATCH /registrations/{id}/check-in handler
