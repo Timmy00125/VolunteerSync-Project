@@ -402,7 +402,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Users Module
 
-- [ ] T057 [P] User service in `backend/internal/modules/users/services/user_service.go`
+- [x] T057 [P] User service in `backend/internal/modules/users/services/user_service.go`
 
   - GetCurrentUser
   - UpdateUserProfile
