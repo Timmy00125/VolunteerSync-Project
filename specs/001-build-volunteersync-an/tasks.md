@@ -415,12 +415,12 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Organizations Module
 
-- [ ] T059 [P] Organization model in `backend/internal/modules/organizations/models/organization.go`
+- [x] T059 [P] Organization model in `backend/internal/modules/organizations/models/organization.go`
 
   - Organization struct with GORM tags
   - Slug generation from name
 
-- [ ] T060 [P] Organization repository in `backend/internal/modules/organizations/repositories/org_repository.go`
+- [x] T060 [P] Organization repository in `backend/internal/modules/organizations/repositories/org_repository.go`
 
   - CreateOrganization
   - FindOrganizationById
@@ -429,7 +429,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - UpdateOrganization
   - AddMember, RemoveMember
 
-- [ ] T061 Organization service in `backend/internal/modules/organizations/services/org_service.go`
+- [x] T061 Organization service in `backend/internal/modules/organizations/services/org_service.go`
 
   - CreateOrganization (auto-verify, geocode address, create member record)
   - GetOrganization (with member count)
@@ -438,7 +438,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - InviteMember (FR-014)
   - RemoveMember
 
-- [ ] T062 Organization handlers in `backend/internal/modules/organizations/handlers/org_handlers.go`
+- [x] T062 Organization handlers in `backend/internal/modules/organizations/handlers/org_handlers.go`
   - POST /organizations handler
   - GET /organizations/{id} handler
   - PATCH /organizations/{id} handler
