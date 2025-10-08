@@ -408,7 +408,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - UpdateUserProfile
   - DeleteUserAccount (soft delete with data retention)
 
-- [ ] T058 User handlers in `backend/internal/modules/users/handlers/user_handlers.go`
+- [x] T058 User handlers in `backend/internal/modules/users/handlers/user_handlers.go`
   - GET /users/me handler
   - PATCH /users/me handler
   - DELETE /users/me/delete handler
