@@ -539,19 +539,19 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Hours Tracking Module
 
-- [ ] T075 [P] Hours log model in `backend/internal/modules/hours/models/hours_log.go`
+- [x] T075 [P] Hours log model in `backend/internal/modules/hours/models/hours_log.go`
 
   - HoursLog struct (immutable audit trail)
   - Status enum (pending, verified, disputed)
 
-- [ ] T076 [P] Hours repository in `backend/internal/modules/hours/repositories/hours_repository.go`
+- [x] T076 [P] Hours repository in `backend/internal/modules/hours/repositories/hours_repository.go`
 
   - CreateHoursLog (immutable)
   - FindHoursLogById
   - UpdateHoursStatus (only status, not hours amount)
   - FindPendingHoursOlderThan7Days
 
-- [ ] T077 Hours service in `backend/internal/modules/hours/services/hours_service.go`
+- [x] T077 Hours service in `backend/internal/modules/hours/services/hours_service.go`
 
   - LogHours (create log, update registration, notify volunteer)
   - VerifyHours (update status to verified, increment volunteer total_hours)
@@ -559,7 +559,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - AutoVerifyOldHours (cron job, auto-verify after 7 days)
   - ResolveDispute
 
-- [ ] T078 Hours handlers in `backend/internal/modules/hours/handlers/hours_handlers.go`
+- [x] T078 Hours handlers in `backend/internal/modules/hours/handlers/hours_handlers.go`
   - POST /hours/log handler
   - POST /hours/{id}/verify handler
   - POST /hours/{id}/dispute handler
