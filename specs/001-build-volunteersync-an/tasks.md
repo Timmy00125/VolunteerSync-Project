@@ -446,12 +446,12 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Volunteers Module
 
-- [ ] T063 [P] Volunteer profile model in `backend/internal/modules/volunteers/models/volunteer_profile.go`
+- [x] T063 [P] Volunteer profile model in `backend/internal/modules/volunteers/models/volunteer_profile.go`
 
   - VolunteerProfile struct with availability fields
   - Privacy settings
 
-- [ ] T064 [P] Volunteer repository in `backend/internal/modules/volunteers/repositories/volunteer_repository.go`
+- [x] T064 [P] Volunteer repository in `backend/internal/modules/volunteers/repositories/volunteer_repository.go`
 
   - CreateVolunteerProfile (on user registration)
   - FindVolunteerProfileByUserId
@@ -459,7 +459,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - AddSkills, RemoveSkills
   - AddInterests, RemoveInterests
 
-- [ ] T065 Volunteer service in `backend/internal/modules/volunteers/services/volunteer_service.go`
+- [x] T065 Volunteer service in `backend/internal/modules/volunteers/services/volunteer_service.go`
 
   - GetVolunteerProfile
   - UpdateVolunteerProfile (geocode location, manage skills/interests)
@@ -467,7 +467,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - GetAnalytics (hours over time chart)
   - GenerateImpactReport (PDF)
 
-- [ ] T066 Volunteer handlers in `backend/internal/modules/volunteers/handlers/volunteer_handlers.go`
+- [x] T066 Volunteer handlers in `backend/internal/modules/volunteers/handlers/volunteer_handlers.go`
   - PATCH /volunteers/me handler
   - GET /volunteers/me/dashboard handler
   - GET /volunteers/me/analytics handler
