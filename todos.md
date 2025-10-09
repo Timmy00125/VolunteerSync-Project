@@ -26,7 +26,7 @@ This document tracks all TODO items, both from the task list and inline code com
 **Priority**: HIGH  
 **Impact**: Security vulnerabilities, unauthorized access
 
-**Progress**: 5 of 7 items complete (analytics authorization ✅, achievements authorization ✅)
+**Progress**: 6 of 7 items complete (analytics authorization ✅, achievements authorization ✅, RBAC middleware ✅)
 
 #### Backend Issues:
 
@@ -58,11 +58,18 @@ This document tracks all TODO items, both from the task list and inline code com
      - Uses `middleware.MustGetUserUUID()` to get authenticated user from context
      - Updated `main.go` to wire organization repository to achievement handler
 
-3. **RBAC Middleware Organization Membership**
+3. **RBAC Middleware Organization Membership** ✅ **COMPLETE**
 
    - File: `backend/internal/middleware/rbac.go`
-   - Line 131: Implement actual organization membership check from database
-   - Currently stores org_id in context but doesn't verify membership
+   - ✅ Line 131: Implement actual organization membership check from database
+   - **Implementation Details**:
+     - Created `OrganizationMembershipChecker` interface for dependency injection
+     - Updated `RequireOrgMembership` to accept optional checker parameter
+     - Performs actual database lookup when checker is provided
+     - Super admins bypass membership checks
+     - Validates UUID formats and handles errors gracefully
+     - Backward compatible: passes `nil` for checker to defer to handler level
+     - **Usage**: `middleware.RequireOrgMembership("org_id", orgRepo)` in route groups
 
 4. **Organizations Service Authorization**
    - File: `backend/internal/modules/organizations/services/org_service.go`
@@ -74,7 +81,7 @@ This document tracks all TODO items, both from the task list and inline code com
 
 - [x] Implement organization membership repository/service
 - [x] Add database queries to verify user roles and org membership
-- [x] Update RBAC middleware to perform actual DB lookups (deferred to handler level)
+- [x] Update RBAC middleware to perform actual DB lookups
 - [x] Add proper authorization checks to all analytics handlers
 - [x] Add proper authorization checks to achievement handlers
 - [ ] Create organization member records on org creation

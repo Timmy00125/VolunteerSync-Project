@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
@@ -14,6 +17,13 @@ const (
 	RoleCoordinator = "coordinator"
 	RoleVolunteer   = "volunteer"
 )
+
+// OrganizationMembershipChecker defines the interface for checking organization membership
+// This allows the RBAC middleware to verify user membership without tight coupling to the repository
+type OrganizationMembershipChecker interface {
+	// IsMember checks if a user is a member of an organization (any role)
+	IsMember(ctx context.Context, orgID, userID uuid.UUID) (bool, error)
+}
 
 // RequireRole creates a middleware that checks if the user has one of the required roles
 // This middleware should be used after AuthMiddleware
@@ -96,7 +106,14 @@ func RequireAnyRole() gin.HandlerFunc {
 // RequireOrgMembership creates a middleware that verifies the user belongs to the specified organization
 // The organization ID is typically extracted from the URL parameter (e.g., /organizations/:org_id/...)
 // This middleware should be used after AuthMiddleware
-func RequireOrgMembership(orgIDParam string) gin.HandlerFunc {
+//
+// Parameters:
+//   - orgIDParam: The name of the URL parameter containing the organization ID
+//   - checker: An implementation of OrganizationMembershipChecker for database lookups
+//
+// If checker is nil, the middleware will only store the org_id in context without verification
+// (useful for backward compatibility or when verification is done at handler level)
+func RequireOrgMembership(orgIDParam string, checker OrganizationMembershipChecker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log := logger.Get().WithContext(c.Request.Context())
 
@@ -128,17 +145,58 @@ func RequireOrgMembership(orgIDParam string) gin.HandlerFunc {
 			return
 		}
 
-		// TODO: Implement actual organization membership check from database
-		// For now, we'll store the org_id in context for the handler to verify
-		// The actual verification should be done at the service/repository level
-		// where we have access to the database
-
 		// Store org_id in context for handler use
 		c.Set("org_id", orgID)
 
+		// If no checker is provided, defer verification to handler level
+		if checker == nil {
+			log.WithField("user_id", userID).
+				WithField("org_id", orgID).
+				Debug("Organization membership check deferred to handler")
+			c.Next()
+			return
+		}
+
+		// Parse organization ID as UUID
+		orgUUID, err := uuid.Parse(orgID)
+		if err != nil {
+			log.WithField("org_id", orgID).
+				Warn("Invalid organization ID format")
+			errors.AbortWithError(c, errors.NewBadRequestError("Invalid organization ID"))
+			return
+		}
+
+		// Parse user ID as UUID
+		userUUID, err := uuid.Parse(userID)
+		if err != nil {
+			log.WithField("user_id", userID).
+				Error("Invalid user ID format in context")
+			errors.AbortWithError(c, errors.NewInternalServerError("Internal server error"))
+			return
+		}
+
+		// Check if user is a member of the organization
+		isMember, err := checker.IsMember(c.Request.Context(), orgUUID, userUUID)
+		if err != nil {
+			log.WithField("user_id", userID).
+				WithField("org_id", orgID).
+				WithField("error", err.Error()).
+				Error("Failed to check organization membership")
+			errors.AbortWithError(c, errors.NewInternalServerError("Failed to verify organization membership"))
+			return
+		}
+
+		if !isMember {
+			log.WithField("user_id", userID).
+				WithField("org_id", orgID).
+				Warn("User is not a member of the organization")
+			errors.AbortWithError(c, errors.NewForbiddenError("You are not a member of this organization"))
+			return
+		}
+
 		log.WithField("user_id", userID).
 			WithField("org_id", orgID).
-			Debug("Organization membership check required in handler")
+			Debug("Organization membership verified")
 
 		c.Next()
 	}
