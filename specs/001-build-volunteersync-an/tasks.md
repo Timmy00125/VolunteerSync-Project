@@ -714,7 +714,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Dark mode support
   - Responsive breakpoints
 
-- [ ] T102 [P] Form validation schemas in `frontend/src/lib/validations/`
+- [x] T102 [P] Form validation schemas in `frontend/src/lib/validations/`
   - Zod schemas for registration, login, profile, opportunity forms
 
 ### Frontend - Authentication Pages
