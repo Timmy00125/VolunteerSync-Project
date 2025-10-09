@@ -1,0 +1,323 @@
+name: Security Scanning
+
+on:
+    push:
+        branches:
+            - main
+            - "feature/**"
+            - "bugfix/**"
+    pull_request:
+        branches:
+            - main
+    schedule:
+        # Run security scans daily at 2 AM UTC
+        - cron: "0 2 * * *"
+    workflow_dispatch:
+
+env:
+    GO_VERSION: "1.23"
+    NODE_VERSION: "20"
+
+jobs:
+    # Dependency scanning for backend (Go)
+    backend-dependency-scan:
+        name: Backend Dependency Scan
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: ${{ env.GO_VERSION }}
+                  cache-dependency-path: backend/go.sum
+
+            - name: Run Gosec Security Scanner
+              uses: securego/gosec@master
+              with:
+                  args: "-fmt sarif -out gosec-results.sarif ./..."
+              continue-on-error: true
+
+            - name: Upload Gosec SARIF report
+              uses: github/codeql-action/upload-sarif@v3
+              with:
+                  sarif_file: gosec-results.sarif
+                  category: gosec
+
+            - name: Run Nancy vulnerability scanner
+              working-directory: backend
+              run: |
+                  go install github.com/sonatype-nexus-community/nancy@latest
+                  go list -json -deps ./... | nancy sleuth
+              continue-on-error: true
+
+            - name: Run govulncheck
+              working-directory: backend
+              run: |
+                  go install golang.org/x/vuln/cmd/govulncheck@latest
+                  govulncheck ./...
+              continue-on-error: true
+
+    # Dependency scanning for frontend (Node.js)
+    frontend-dependency-scan:
+        name: Frontend Dependency Scan
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+                  cache-dependency-path: frontend/package-lock.json
+
+            - name: Install dependencies
+              working-directory: frontend
+              run: npm ci
+
+            - name: Run npm audit
+              working-directory: frontend
+              run: |
+                  npm audit --audit-level=moderate
+              continue-on-error: true
+
+            - name: Run npm audit fix
+              if: github.event_name == 'pull_request'
+              working-directory: frontend
+              run: |
+                  npm audit fix --audit-level=moderate --dry-run > audit-fix-report.txt
+                  cat audit-fix-report.txt
+
+            - name: Upload npm audit report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: npm-audit-report
+                  path: frontend/audit-fix-report.txt
+                  retention-days: 30
+
+    # CodeQL analysis
+    codeql-analysis:
+        name: CodeQL Security Analysis
+        runs-on: ubuntu-latest
+        permissions:
+            security-events: write
+            contents: read
+            actions: read
+        strategy:
+            fail-fast: false
+            matrix:
+                language: ["go", "javascript-typescript"]
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Initialize CodeQL
+              uses: github/codeql-action/init@v3
+              with:
+                  languages: ${{ matrix.language }}
+                  queries: security-extended,security-and-quality
+
+            - name: Set up Go (for Go analysis)
+              if: matrix.language == 'go'
+              uses: actions/setup-go@v5
+              with:
+                  go-version: ${{ env.GO_VERSION }}
+                  cache-dependency-path: backend/go.sum
+
+            - name: Autobuild
+              uses: github/codeql-action/autobuild@v3
+
+            - name: Perform CodeQL Analysis
+              uses: github/codeql-action/analyze@v3
+              with:
+                  category: "/language:${{ matrix.language }}"
+
+    # Docker image scanning
+    docker-image-scan:
+        name: Docker Image Security Scan
+        runs-on: ubuntu-latest
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build backend image for scanning
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: docker/backend.Dockerfile
+                  push: false
+                  load: true
+                  tags: volunteersync-backend:scan
+                  build-args: |
+                      GO_VERSION=${{ env.GO_VERSION }}
+
+            - name: Run Trivy scanner on backend image
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: volunteersync-backend:scan
+                  format: "sarif"
+                  output: "trivy-backend-results.sarif"
+                  severity: "CRITICAL,HIGH,MEDIUM"
+
+            - name: Upload Trivy backend results to GitHub Security
+              uses: github/codeql-action/upload-sarif@v3
+              with:
+                  sarif_file: trivy-backend-results.sarif
+                  category: trivy-backend
+
+            - name: Build frontend image for scanning
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: docker/frontend.Dockerfile
+                  push: false
+                  load: true
+                  tags: volunteersync-frontend:scan
+                  build-args: |
+                      NODE_VERSION=${{ env.NODE_VERSION }}
+
+            - name: Run Trivy scanner on frontend image
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: volunteersync-frontend:scan
+                  format: "sarif"
+                  output: "trivy-frontend-results.sarif"
+                  severity: "CRITICAL,HIGH,MEDIUM"
+
+            - name: Upload Trivy frontend results to GitHub Security
+              uses: github/codeql-action/upload-sarif@v3
+              with:
+                  sarif_file: trivy-frontend-results.sarif
+                  category: trivy-frontend
+
+    # Secret scanning with Gitleaks
+    secret-scan:
+        name: Secret Scanning
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Run Gitleaks
+              uses: gitleaks/gitleaks-action@v2
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # OWASP Dependency-Check
+    owasp-dependency-check:
+        name: OWASP Dependency Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Run OWASP Dependency-Check
+              uses: dependency-check/Dependency-Check_Action@main
+              with:
+                  project: "VolunteerSync"
+                  path: "."
+                  format: "HTML"
+                  args: >
+                      --enableRetired
+                      --failOnCVSS 7
+
+            - name: Upload Dependency-Check report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: dependency-check-report
+                  path: reports/
+                  retention-days: 30
+
+    # Security summary
+    security-summary:
+        name: Security Scan Summary
+        runs-on: ubuntu-latest
+        needs:
+            - backend-dependency-scan
+            - frontend-dependency-scan
+            - codeql-analysis
+            - secret-scan
+        if: always()
+        steps:
+            - name: Generate security summary
+              run: |
+                  echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+                  echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+                  echo "| Backend Dependencies | ${{ needs.backend-dependency-scan.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+                  echo "| Frontend Dependencies | ${{ needs.frontend-dependency-scan.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+                  echo "| CodeQL Analysis | ${{ needs.codeql-analysis.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+                  echo "| Secret Scanning | ${{ needs.secret-scan.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+
+                  if [[ "${{ needs.backend-dependency-scan.result }}" == "failure" ]] || \
+                     [[ "${{ needs.frontend-dependency-scan.result }}" == "failure" ]] || \
+                     [[ "${{ needs.codeql-analysis.result }}" == "failure" ]] || \
+                     [[ "${{ needs.secret-scan.result }}" == "failure" ]]; then
+                    echo "⚠️ **Security issues detected!** Review the failed checks above." >> $GITHUB_STEP_SUMMARY
+                    exit 1
+                  else
+                    echo "✅ **All security checks passed!**" >> $GITHUB_STEP_SUMMARY
+                  fi
+
+    # Create GitHub issue for critical vulnerabilities
+    create-security-issue:
+        name: Create Security Issue
+        runs-on: ubuntu-latest
+        needs:
+            - backend-dependency-scan
+            - frontend-dependency-scan
+            - codeql-analysis
+        if: failure() && github.event_name == 'schedule'
+        permissions:
+            issues: write
+        steps:
+            - name: Create issue for security vulnerabilities
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const issue = await github.rest.issues.create({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        title: '🔒 Security Vulnerability Detected - ' + new Date().toISOString().split('T')[0],
+                        body: `## Security Scan Failed
+
+                        Critical security vulnerabilities were detected during the scheduled security scan.
+
+                        **Workflow Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+                        **Commit**: ${context.sha}
+
+                        ### Action Required
+
+                        1. Review the workflow run logs for details
+                        2. Address critical and high-severity vulnerabilities within 7 days
+                        3. Update dependencies and re-run security scans
+                        4. Close this issue once vulnerabilities are resolved
+
+                        ### Resources
+
+                        - [Security Scanning Workflow](.github/workflows/security.yml)
+                        - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+                        - [GitHub Security Advisories](https://github.com/advisories)
+                        `,
+                        labels: ['security', 'critical', 'automated']
+                      });
+                      console.log(`Created issue #${issue.data.number}`);

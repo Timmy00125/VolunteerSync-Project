@@ -1,0 +1,845 @@
+openapi: 3.1.0
+info:
+  title: VolunteerSync API
+  description: |
+    RESTful API for VolunteerSync volunteer management platform.
+    
+    **Authentication**: JWT Bearer token required for protected endpoints.
+    **Rate Limiting**: 100 requests per minute per user, 5 login attempts per 15 minutes per IP.
+    **Base URL**: `http://localhost:8080/api/v1` (development)
+    
+    ## API Modules:
+    - **Authentication**: User registration, login, password reset
+    - **Users**: User profile management
+    - **Organizations**: Organization CRUD, team management
+    - **Volunteers**: Volunteer profile management
+    - **Opportunities**: Event/opportunity CRUD, search
+    - **Registrations**: Volunteer event registration
+    - **Hours**: Hours tracking and verification
+    - **Communications**: Messages and notifications
+    - **Analytics**: Reporting and dashboards
+    - **Documents**: Document management
+    - **Teams**: Team/group management
+    - **Admin**: Platform administration
+  version: 1.0.0
+  contact:
+    name: VolunteerSync API Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://staging.volunteersync.com/api/v1
+    description: Staging server
+  - url: https://api.volunteersync.com/api/v1
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration, login, password reset
+  - name: Users
+    description: User profile management
+  - name: Organizations
+    description: Organization management
+  - name: Volunteers
+    description: Volunteer profile management
+  - name: Opportunities
+    description: Opportunity/event management
+  - name: Registrations
+    description: Volunteer event registration
+  - name: Hours
+    description: Hours tracking and verification
+  - name: Communications
+    description: Messages and notifications
+  - name: Analytics
+    description: Reporting and dashboards
+  - name: Documents
+    description: Document management
+  - name: Teams
+    description: Team/group management
+  - name: Admin
+    description: Platform administration
+
+paths:
+  # ============================================================================
+  # AUTHENTICATION MODULE
+  # ============================================================================
+  
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: |
+        Create a new user account with immediate activation (FR-002).
+        User must provide security questions for password reset (FR-003).
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - first_name
+                - last_name
+                - user_type
+                - security_questions
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: Minimum 8 characters, mix of letters and numbers
+                  example: SecurePass123
+                first_name:
+                  type: string
+                  example: John
+                last_name:
+                  type: string
+                  example: Doe
+                phone:
+                  type: string
+                  nullable: true
+                  example: "+1234567890"
+                user_type:
+                  type: string
+                  enum: [volunteer, organization_admin]
+                  description: Initial user type (can have multiple roles later)
+                security_questions:
+                  type: array
+                  description: Must provide 3 security questions and answers
+                  minItems: 3
+                  maxItems: 3
+                  items:
+                    type: object
+                    required:
+                      - question
+                      - answer
+                    properties:
+                      question:
+                        type: string
+                        example: "What is your mother's maiden name?"
+                      answer:
+                        type: string
+                        example: "Smith"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  access_token:
+                    type: string
+                    description: JWT access token (15 minutes)
+                  refresh_token:
+                    type: string
+                    description: JWT refresh token (7 days)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with email and password (FR-001)
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Invalidate refresh token and logout user
+      operationId: logoutUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/password-reset/request:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      description: Initiate password reset using security questions (FR-003)
+      operationId: requestPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Security questions returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reset_token:
+                    type: string
+                    description: Temporary token for password reset flow
+                  security_questions:
+                    type: array
+                    description: User's 3 security questions
+                    items:
+                      type: string
+        '404':
+          description: Email not found
+
+  /auth/password-reset/verify:
+    post:
+      tags:
+        - Authentication
+      summary: Verify security question answers
+      description: Verify answers to security questions (minimum 2 of 3 correct, FR-003a)
+      operationId: verifySecurityAnswers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reset_token
+                - answers
+              properties:
+                reset_token:
+                  type: string
+                answers:
+                  type: array
+                  minItems: 3
+                  maxItems: 3
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Answers verified, can proceed to reset password
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verified_token:
+                    type: string
+                    description: Token to use for password reset
+        '400':
+          description: Insufficient correct answers
+
+  /auth/password-reset/confirm:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      description: Set new password after security question verification
+      operationId: confirmPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - verified_token
+                - new_password
+              properties:
+                verified_token:
+                  type: string
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          description: Password reset successful
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ============================================================================
+  # USERS MODULE
+  # ============================================================================
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      description: Retrieve authenticated user's profile
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    
+    patch:
+      tags:
+        - Users
+      summary: Update current user profile
+      description: Update authenticated user's profile information
+      operationId: updateCurrentUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                  description: Requires reverification (FR-007)
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/delete:
+    delete:
+      tags:
+        - Users
+      summary: Delete user account
+      description: Request account deletion with data retention compliance (FR-009, FR-107)
+      operationId: deleteUserAccount
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Account deletion requested
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # ORGANIZATIONS MODULE
+  # ============================================================================
+
+  /organizations:
+    get:
+      tags:
+        - Organizations
+      summary: List organizations
+      description: Get paginated list of organizations with optional filters
+      operationId: listOrganizations
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by organization name
+        - name: cause
+          in: query
+          schema:
+            type: string
+          description: Filter by cause category slug
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organizations list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Organization'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags:
+        - Organizations
+      summary: Create organization
+      description: Create new organization profile (FR-010)
+      operationId: createOrganization
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreate'
+      responses:
+        '201':
+          description: Organization created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /organizations/{org_id}:
+    get:
+      tags:
+        - Organizations
+      summary: Get organization by ID
+      description: Retrieve organization profile (public endpoint, FR-011)
+      operationId: getOrganization
+      parameters:
+        - name: org_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Organization retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Organizations
+      summary: Update organization
+      description: Update organization profile (admin only)
+      operationId: updateOrganization
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: org_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationUpdate'
+      responses:
+        '200':
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# Additional paths continue...
+# Due to length, showing structure for key endpoints
+# Full OpenAPI spec would include all 111 functional requirements
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token (15 minutes)
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+      description: Page number
+    
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+      description: Items per page
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Authentication required or token expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        account_status:
+          type: string
+          enum: [active, inactive, suspended]
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        mission_statement:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        address:
+          $ref: '#/components/schemas/Address'
+        logo_url:
+          type: string
+          nullable: true
+        banner_url:
+          type: string
+          nullable: true
+        verification_status:
+          type: string
+          enum: [verified, unverified]
+        total_volunteers:
+          type: integer
+        total_hours:
+          type: number
+          format: float
+        avg_rating:
+          type: number
+          format: float
+          nullable: true
+        causes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    OrganizationCreate:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+        mission_statement:
+          type: string
+        description:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        logo_url:
+          type: string
+        banner_url:
+          type: string
+        cause_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    OrganizationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        mission_statement:
+          type: string
+        description:
+          type: string
+        website:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        logo_url:
+          type: string
+        banner_url:
+          type: string
+        cause_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    Address:
+      type: object
+      properties:
+        address_line_1:
+          type: string
+        address_line_2:
+          type: string
+          nullable: true
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        country:
+          type: string
+          default: "United States"
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+        total_items:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: invalid_request
+        message:
+          type: string
+          example: Validation error
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true

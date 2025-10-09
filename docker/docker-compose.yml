@@ -1,0 +1,177 @@
+version: "3.9"
+
+services:
+  # PostgreSQL 16 Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: volunteersync-postgres
+    environment:
+      POSTGRES_DB: volunteersync
+      POSTGRES_USER: volunteersync
+      POSTGRES_PASSWORD: volunteersync_dev_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - volunteersync-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U volunteersync -d volunteersync"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Redis Cache and Session Store
+  redis:
+    image: redis:7-alpine
+    container_name: volunteersync-redis
+    command: redis-server --appendonly yes --requirepass volunteersync_redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - volunteersync-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # Backend API (Go with Gin)
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    container_name: volunteersync-backend
+    environment:
+      # Application
+      APP_ENV: development
+      APP_PORT: 8080
+
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: volunteersync
+      DB_USER: volunteersync
+      DB_PASSWORD: volunteersync_dev_password
+      DB_SSLMODE: disable
+      DB_MAX_OPEN_CONNS: 25
+      DB_MAX_IDLE_CONNS: 5
+      DB_CONN_MAX_LIFETIME: 300s
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: volunteersync_redis_password
+      REDIS_DB: 0
+
+      # JWT
+      JWT_ACCESS_SECRET: dev_jwt_access_secret_change_in_production_minimum_32_characters
+      JWT_REFRESH_SECRET: dev_jwt_refresh_secret_change_in_production_minimum_32_characters
+      JWT_ACCESS_TOKEN_EXPIRY: 15m
+      JWT_REFRESH_TOKEN_EXPIRY: 168h
+      JWT_ISSUER: volunteersync
+
+      # Rate Limiting
+      RATE_LIMIT_REQUESTS: 100
+      RATE_LIMIT_WINDOW: 1m
+
+      # CORS
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://frontend:3000
+
+      # Logging
+      LOG_LEVEL: debug
+      LOG_FORMAT: json
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - volunteersync-network
+    volumes:
+      - ../backend:/app
+      # Cache Go modules to speed up rebuilds
+      - go_modules:/go/pkg/mod
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend (Next.js 15)
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+      target: development
+    container_name: volunteersync-frontend
+    environment:
+      # Next.js
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: 1
+
+      # API Configuration
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+      # Feature Flags (V1)
+      NEXT_PUBLIC_ENABLE_PWA: false
+      NEXT_PUBLIC_ENABLE_MAPS: true
+      NEXT_PUBLIC_ENABLE_CHARTS: true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - volunteersync-network
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+networks:
+  volunteersync-network:
+    driver: bridge
+    name: volunteersync-network
+
+volumes:
+  postgres_data:
+    name: volunteersync-postgres-data
+  redis_data:
+    name: volunteersync-redis-data
+  go_modules:
+    name: volunteersync-go-modules
