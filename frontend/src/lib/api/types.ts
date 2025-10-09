@@ -122,13 +122,52 @@ export interface Organization {
 export interface VolunteerProfile {
   id: string;
   user_id: string;
-  bio?: string;
+  profile_photo_url?: string;
+  biography?: string;
   location?: string;
   latitude?: number;
   longitude?: number;
-  skills: string[];
-  interests: string[];
-  availability: {
+  availability_monday: boolean;
+  availability_tuesday: boolean;
+  availability_wednesday: boolean;
+  availability_thursday: boolean;
+  availability_friday: boolean;
+  availability_saturday: boolean;
+  availability_sunday: boolean;
+  preferred_time?: 'morning' | 'afternoon' | 'evening' | 'flexible';
+  total_hours: number;
+  total_events: number;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  privacy_show_hours: boolean;
+  privacy_show_events: boolean;
+  privacy_show_organizations: boolean;
+  notification_in_app: boolean;
+  notification_browser_push: boolean;
+  skills: Skill[];
+  interests: Cause[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  category?: string;
+}
+
+export interface Cause {
+  id: string;
+  name: string;
+  slug?: string;
+  description?: string;
+}
+
+export interface UpdateVolunteerProfileInput {
+  profile_photo_url?: string;
+  biography?: string;
+  location?: string;
+  availability?: {
     monday?: boolean;
     tuesday?: boolean;
     wednesday?: boolean;
@@ -137,14 +176,20 @@ export interface VolunteerProfile {
     saturday?: boolean;
     sunday?: boolean;
   };
-  total_hours: number;
-  privacy_settings: {
-    show_profile: boolean;
-    show_hours: boolean;
-    show_location: boolean;
+  preferred_time?: 'morning' | 'afternoon' | 'evening' | 'flexible';
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  privacy_settings?: {
+    show_hours?: boolean;
+    show_events?: boolean;
+    show_organizations?: boolean;
   };
-  created_at: string;
-  updated_at: string;
+  notification_settings?: {
+    in_app?: boolean;
+    browser_push?: boolean;
+  };
+  skill_ids?: string[];
+  interest_ids?: string[];
 }
 
 export interface VolunteerDashboard {

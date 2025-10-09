@@ -12,7 +12,13 @@
  * - Consistent error handling
  */
 
-import type { ApiError, AuthTokens, DashboardResponse } from './types';
+import type {
+  ApiError,
+  AuthTokens,
+  DashboardResponse,
+  VolunteerProfile,
+  UpdateVolunteerProfileInput,
+} from './types';
 
 // ============================================================================
 // Configuration
@@ -392,6 +398,24 @@ export async function getVolunteerDashboard(): Promise<DashboardResponse> {
   return response.data;
 }
 
+/**
+ * Get volunteer profile data
+ */
+export async function getVolunteerProfile(): Promise<VolunteerProfile> {
+  const response = await get<{ data: VolunteerProfile }>('/volunteers/me');
+  return response.data;
+}
+
+/**
+ * Update volunteer profile
+ */
+export async function updateVolunteerProfile(
+  data: UpdateVolunteerProfileInput
+): Promise<VolunteerProfile> {
+  const response = await patch<{ data: VolunteerProfile }>('/volunteers/me', data);
+  return response.data;
+}
+
 // ============================================================================
 // Default Export
 // ============================================================================
@@ -408,4 +432,6 @@ export default {
   isAuthenticated,
   logout,
   getVolunteerDashboard,
+  getVolunteerProfile,
+  updateVolunteerProfile,
 };
