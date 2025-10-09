@@ -666,7 +666,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Backend Main Application
 
-- [ ] T095 Create main application in `backend/cmd/api/main.go`
+- [x] T095 Create main application in `backend/cmd/api/main.go`
 
   - Initialize database connection
   - Initialize Redis connection
