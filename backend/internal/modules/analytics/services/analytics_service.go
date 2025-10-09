@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/pdf"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -369,14 +370,327 @@ func (s *analyticsService) GenerateReport(ctx context.Context, reportType string
 		return nil, err
 	}
 
-	// TODO: Implement PDF generation using a PDF library (e.g., gofpdf)
-	// This is a placeholder that returns an error indicating future implementation
 	s.logger.WithContext(ctx).WithFields(map[string]interface{}{
 		"report_type": reportType,
 		"entity_id":   entityID.String(),
-	}).Info("PDF report generation requested (not yet implemented)")
+		"date_range":  fmt.Sprintf("%s to %s", dateRange.StartDate.Format("2006-01-02"), dateRange.EndDate.Format("2006-01-02")),
+	}).Info("Generating PDF report")
 
-	return nil, fmt.Errorf("PDF report generation not yet implemented")
+	// Generate report based on type
+	switch reportType {
+	case "volunteer":
+		return s.generateVolunteerReport(ctx, entityID, dateRange)
+	case "organization":
+		return s.generateOrganizationReport(ctx, entityID, dateRange)
+	case "platform":
+		return s.generatePlatformReport(ctx, dateRange)
+	default:
+		return nil, fmt.Errorf("unsupported report type: %s", reportType)
+	}
+}
+
+// generateVolunteerReport generates a PDF report for a volunteer
+func (s *analyticsService) generateVolunteerReport(ctx context.Context, volunteerProfileID uuid.UUID, dateRange DateRange) ([]byte, error) {
+	// Get volunteer analytics data
+	analytics, err := s.GetVolunteerAnalytics(ctx, volunteerProfileID, dateRange)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get volunteer analytics: %w", err)
+	}
+
+	// Create PDF generator
+	generator := pdf.NewGenerator()
+	generator.SetTitle("Volunteer Analytics Report")
+	generator.SetAuthor("VolunteerSync Platform")
+
+	// Add header
+	generator.AddHeader(
+		"Volunteer Analytics Report",
+		fmt.Sprintf("Period: %s to %s", dateRange.StartDate.Format("Jan 2, 2006"), dateRange.EndDate.Format("Jan 2, 2006")),
+	)
+
+	generator.AddFooter(time.Now())
+
+	// Summary Metrics
+	generator.AddSectionTitle("Summary")
+
+	metrics := []pdf.Metric{
+		{Label: "Total Hours", Value: fmt.Sprintf("%.1f", analytics.TotalHours)},
+		{Label: "Total Events", Value: fmt.Sprintf("%d", analytics.TotalEvents)},
+		{Label: "Organizations", Value: fmt.Sprintf("%d", analytics.TotalOrganizations)},
+		{Label: "Avg Hours/Event", Value: fmt.Sprintf("%.1f", analytics.AverageHoursPerEvent)},
+	}
+
+	generator.AddMetricsRow(metrics)
+
+	// Events by Cause
+	if len(analytics.EventsByCause) > 0 {
+		generator.AddDivider()
+		chartData := make([]pdf.ChartData, 0, len(analytics.EventsByCause))
+		maxValue := 0.0
+
+		for _, item := range analytics.EventsByCause {
+			value := float64(item.Count)
+			chartData = append(chartData, pdf.ChartData{
+				Label: item.CategoryName,
+				Value: value,
+			})
+			if value > maxValue {
+				maxValue = value
+			}
+		}
+
+		generator.AddSimpleBarChart("Events by Cause Category", chartData, maxValue)
+	}
+
+	// Hours by Cause
+	if len(analytics.HoursByCause) > 0 {
+		generator.AddDivider()
+		chartData := make([]pdf.ChartData, 0, len(analytics.HoursByCause))
+		maxValue := 0.0
+
+		for _, item := range analytics.HoursByCause {
+			chartData = append(chartData, pdf.ChartData{
+				Label: item.CategoryName,
+				Value: item.Hours,
+			})
+			if item.Hours > maxValue {
+				maxValue = item.Hours
+			}
+		}
+
+		generator.AddSimpleBarChart("Hours by Cause Category", chartData, maxValue)
+	}
+
+	// Organization Stats Table
+	if len(analytics.OrganizationStats) > 0 {
+		generator.AddDivider()
+		generator.AddSectionTitle("Organization Breakdown")
+
+		headers := []string{"Organization", "Events", "Hours"}
+		colWidths := []float64{90, 40, 40}
+
+		rows := make([][]string, 0, len(analytics.OrganizationStats))
+		for _, org := range analytics.OrganizationStats {
+			rows = append(rows, []string{
+				org.OrganizationName,
+				fmt.Sprintf("%d", org.EventsAttended),
+				fmt.Sprintf("%.1f", org.HoursContributed),
+			})
+		}
+
+		generator.AddTable(headers, rows, colWidths)
+	}
+
+	// Generate and return PDF
+	pdfBytes, err := generator.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate PDF: %w", err)
+	}
+
+	s.logger.WithContext(ctx).WithFields(map[string]interface{}{
+		"volunteer_profile_id": volunteerProfileID.String(),
+		"pdf_size":             len(pdfBytes),
+	}).Info("Volunteer report generated successfully")
+
+	return pdfBytes, nil
+}
+
+// generateOrganizationReport generates a PDF report for an organization
+func (s *analyticsService) generateOrganizationReport(ctx context.Context, organizationID uuid.UUID, dateRange DateRange) ([]byte, error) {
+	// Get organization analytics data
+	analytics, err := s.GetOrganizationAnalytics(ctx, organizationID, dateRange)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get organization analytics: %w", err)
+	}
+
+	// Create PDF generator
+	generator := pdf.NewGenerator()
+	generator.SetTitle("Organization Analytics Report")
+	generator.SetAuthor("VolunteerSync Platform")
+
+	// Add header
+	generator.AddHeader(
+		"Organization Analytics Report",
+		fmt.Sprintf("Period: %s to %s", dateRange.StartDate.Format("Jan 2, 2006"), dateRange.EndDate.Format("Jan 2, 2006")),
+	)
+
+	generator.AddFooter(time.Now())
+
+	// Summary Metrics
+	generator.AddSectionTitle("Summary")
+
+	metrics := []pdf.Metric{
+		{Label: "Total Volunteers", Value: fmt.Sprintf("%d", analytics.TotalVolunteers)},
+		{Label: "Active Volunteers", Value: fmt.Sprintf("%d", analytics.ActiveVolunteers)},
+		{Label: "Total Hours", Value: fmt.Sprintf("%.1f", analytics.TotalHours)},
+	}
+
+	generator.AddMetricsRow(metrics)
+
+	// Second row of metrics
+	metrics2 := []pdf.Metric{
+		{Label: "Opportunities", Value: fmt.Sprintf("%d", analytics.TotalOpportunities)},
+		{Label: "Completed Events", Value: fmt.Sprintf("%d", analytics.CompletedEvents)},
+		{Label: "Retention Rate", Value: fmt.Sprintf("%.1f%%", analytics.RetentionRate)},
+	}
+
+	generator.AddMetricsRow(metrics2)
+
+	// Events by Cause
+	if len(analytics.EventsByCause) > 0 {
+		generator.AddDivider()
+		chartData := make([]pdf.ChartData, 0, len(analytics.EventsByCause))
+		maxValue := 0.0
+
+		for _, item := range analytics.EventsByCause {
+			value := float64(item.Count)
+			chartData = append(chartData, pdf.ChartData{
+				Label: item.CategoryName,
+				Value: value,
+			})
+			if value > maxValue {
+				maxValue = value
+			}
+		}
+
+		generator.AddSimpleBarChart("Events by Cause Category", chartData, maxValue)
+	}
+
+	// Top Volunteers Table
+	if len(analytics.TopVolunteers) > 0 {
+		generator.AddDivider()
+		generator.AddSectionTitle("Top Volunteers")
+
+		headers := []string{"Volunteer", "Hours", "Events"}
+		colWidths := []float64{90, 40, 40}
+
+		rows := make([][]string, 0, len(analytics.TopVolunteers))
+		for _, vol := range analytics.TopVolunteers {
+			rows = append(rows, []string{
+				vol.FirstName + " " + vol.LastName,
+				fmt.Sprintf("%.1f", vol.TotalHours),
+				fmt.Sprintf("%d", vol.TotalEvents),
+			})
+		}
+
+		generator.AddTable(headers, rows, colWidths)
+	}
+
+	// Generate and return PDF
+	pdfBytes, err := generator.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate PDF: %w", err)
+	}
+
+	s.logger.WithContext(ctx).WithFields(map[string]interface{}{
+		"organization_id": organizationID.String(),
+		"pdf_size":        len(pdfBytes),
+	}).Info("Organization report generated successfully")
+
+	return pdfBytes, nil
+}
+
+// generatePlatformReport generates a PDF report for platform-wide analytics
+func (s *analyticsService) generatePlatformReport(ctx context.Context, dateRange DateRange) ([]byte, error) {
+	// Get platform analytics data
+	analytics, err := s.GetPlatformAnalytics(ctx, dateRange)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get platform analytics: %w", err)
+	}
+
+	// Create PDF generator
+	generator := pdf.NewGenerator()
+	generator.SetTitle("Platform Analytics Report")
+	generator.SetAuthor("VolunteerSync Platform")
+
+	// Add header
+	generator.AddHeader(
+		"Platform Analytics Report",
+		fmt.Sprintf("Period: %s to %s", dateRange.StartDate.Format("Jan 2, 2006"), dateRange.EndDate.Format("Jan 2, 2006")),
+	)
+
+	generator.AddFooter(time.Now())
+
+	// Summary Metrics
+	generator.AddSectionTitle("Platform Overview")
+
+	metrics := []pdf.Metric{
+		{Label: "Total Volunteers", Value: fmt.Sprintf("%d", analytics.TotalVolunteers)},
+		{Label: "Active Volunteers", Value: fmt.Sprintf("%d", analytics.ActiveVolunteers)},
+		{Label: "Total Orgs", Value: fmt.Sprintf("%d", analytics.TotalOrganizations)},
+	}
+
+	generator.AddMetricsRow(metrics)
+
+	// Second row of metrics
+	avgHoursPerVol := 0.0
+	if analytics.TotalVolunteers > 0 {
+		avgHoursPerVol = analytics.TotalHours / float64(analytics.TotalVolunteers)
+	}
+
+	metrics2 := []pdf.Metric{
+		{Label: "Total Hours", Value: fmt.Sprintf("%.0f", analytics.TotalHours)},
+		{Label: "Opportunities", Value: fmt.Sprintf("%d", analytics.TotalOpportunities)},
+		{Label: "Avg Hours/Vol", Value: fmt.Sprintf("%.1f", avgHoursPerVol)},
+	}
+
+	generator.AddMetricsRow(metrics2)
+
+	// Events by Cause
+	if len(analytics.EventsByCause) > 0 {
+		generator.AddDivider()
+		chartData := make([]pdf.ChartData, 0, len(analytics.EventsByCause))
+		maxValue := 0.0
+
+		for _, item := range analytics.EventsByCause {
+			value := float64(item.Count)
+			chartData = append(chartData, pdf.ChartData{
+				Label: item.CategoryName,
+				Value: value,
+			})
+			if value > maxValue {
+				maxValue = value
+			}
+		}
+
+		generator.AddSimpleBarChart("Events by Cause Category", chartData, maxValue)
+	}
+
+	// Geographic Distribution Table
+	if len(analytics.GeographicDistribution) > 0 {
+		generator.AddDivider()
+		generator.AddSectionTitle("Geographic Distribution")
+
+		headers := []string{"Location", "Volunteers", "Hours"}
+		colWidths := []float64{90, 40, 40}
+
+		rows := make([][]string, 0, len(analytics.GeographicDistribution))
+		for _, geo := range analytics.GeographicDistribution {
+			location := geo.State
+			if geo.City != "" {
+				location = geo.City + ", " + geo.State
+			}
+			rows = append(rows, []string{
+				location,
+				fmt.Sprintf("%d", geo.Volunteers),
+				fmt.Sprintf("%.1f", geo.Hours),
+			})
+		}
+
+		generator.AddTable(headers, rows, colWidths)
+	}
+
+	// Generate and return PDF
+	pdfBytes, err := generator.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate PDF: %w", err)
+	}
+
+	s.logger.WithContext(ctx).WithFields(map[string]interface{}{
+		"pdf_size": len(pdfBytes),
+	}).Info("Platform report generated successfully")
+
+	return pdfBytes, nil
 }
 
 // Helper methods for volunteer analytics

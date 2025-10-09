@@ -10,6 +10,7 @@ import (
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/repositories"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/pdf"
 	"github.com/google/uuid"
 )
 
@@ -486,17 +487,123 @@ func (s *volunteerService) GenerateImpactReport(ctx context.Context, userID uuid
 		return nil, fmt.Errorf("failed to find volunteer profile: %w", err)
 	}
 
-	// TODO: Implement PDF generation using a library like gopdf or wkhtmltopdf
-	// For now, return a placeholder
+	// Create PDF generator
+	generator := pdf.NewGenerator()
+	generator.SetTitle("Volunteer Impact Report")
+	generator.SetAuthor("VolunteerSync Platform")
+
+	// Add header
+	generator.AddHeader(
+		"Volunteer Impact Report",
+		fmt.Sprintf("Profile ID: %s", profile.ID.String()),
+	)
+
+	// Add generation date footer
+	generator.AddFooter(time.Now())
+
+	// Profile Information Section
+	generator.AddSectionTitle("Volunteer Profile")
+
+	if profile.Biography != nil && *profile.Biography != "" {
+		generator.AddText(*profile.Biography)
+		generator.GetPDF().Ln(3)
+	}
+
+	if profile.Location != nil && *profile.Location != "" {
+		generator.AddKeyValue("Location", *profile.Location)
+	}
+
+	if profile.EmergencyContactName != nil && *profile.EmergencyContactName != "" {
+		generator.AddKeyValue("Emergency Contact", *profile.EmergencyContactName)
+	}
+
+	generator.AddDivider()
+
+	// Impact Metrics Section
+	generator.AddSectionTitle("Impact Summary")
+
+	// Add metric boxes for key stats
+	metrics := []pdf.Metric{
+		{Label: "Total Hours", Value: fmt.Sprintf("%.1f", profile.TotalHours)},
+		{Label: "Total Events", Value: fmt.Sprintf("%d", profile.TotalEvents)},
+	}
+
+	// Calculate average hours per event
+	avgHours := 0.0
+	if profile.TotalEvents > 0 {
+		avgHours = profile.TotalHours / float64(profile.TotalEvents)
+	}
+	metrics = append(metrics, pdf.Metric{
+		Label: "Avg Hours/Event",
+		Value: fmt.Sprintf("%.1f", avgHours),
+	})
+
+	generator.AddMetricsRow(metrics)
+
+	generator.AddDivider()
+
+	// Availability Section
+	generator.AddSectionTitle("Availability")
+
+	availabilityDays := []struct {
+		day   string
+		avail bool
+	}{
+		{"Monday", profile.AvailabilityMonday},
+		{"Tuesday", profile.AvailabilityTuesday},
+		{"Wednesday", profile.AvailabilityWednesday},
+		{"Thursday", profile.AvailabilityThursday},
+		{"Friday", profile.AvailabilityFriday},
+		{"Saturday", profile.AvailabilitySaturday},
+		{"Sunday", profile.AvailabilitySunday},
+	}
+
+	availText := "Available on: "
+	availCount := 0
+	for _, day := range availabilityDays {
+		if day.avail {
+			if availCount > 0 {
+				availText += ", "
+			}
+			availText += day.day
+			availCount++
+		}
+	}
+
+	if availCount == 0 {
+		availText = "Availability not specified"
+	}
+
+	generator.AddText(availText)
+
+	if profile.PreferredTime != nil && *profile.PreferredTime != "" {
+		generator.GetPDF().Ln(2)
+		generator.AddKeyValue("Preferred Time", string(*profile.PreferredTime))
+	}
+
+	generator.AddDivider()
+
+	// Note about future enhancements
+	generator.AddSectionTitle("About This Report")
+	generator.AddText("This impact report showcases your volunteer contributions. Future enhancements will include detailed event history, organization breakdowns, skills and interests, achievement displays, and visual charts of your volunteer journey over time.")
+
+	// Generate the PDF
+	pdfBytes, err := generator.Output()
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"error":   err.Error(),
+			"user_id": userID.String(),
+		}).Error("Failed to generate PDF")
+		return nil, fmt.Errorf("failed to generate PDF: %w", err)
+	}
+
 	s.logger.WithFields(map[string]interface{}{
 		"user_id":    userID.String(),
 		"profile_id": profile.ID.String(),
-	}).Info("Impact report generation requested")
+		"pdf_size":   len(pdfBytes),
+	}).Info("Impact report generated successfully")
 
-	// Return placeholder PDF content
-	placeholder := []byte("PDF Impact Report Placeholder - To be implemented with PDF generation library")
-
-	return placeholder, nil
+	return pdfBytes, nil
 }
 
 // CreateVolunteerProfile creates a new volunteer profile during user registration
