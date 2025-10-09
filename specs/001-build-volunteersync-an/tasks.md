@@ -726,7 +726,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Client-side validation with React Hook Form + Zod
   - API call to POST /auth/register
 
-- [ ] T104 [P] Login page in `frontend/src/app/(auth)/login/page.tsx`
+- [x] T104 [P] Login page in `frontend/src/app/(auth)/login/page.tsx`
 
   - Email and password form
   - Remember me checkbox
