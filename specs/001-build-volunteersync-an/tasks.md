@@ -632,34 +632,34 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Middleware
 
-- [ ] T089 [P] Authentication middleware in `backend/internal/middleware/auth.go`
+- [x] T089 [P] Authentication middleware in `backend/internal/middleware/auth.go`
 
   - Validate JWT token
   - Extract user from token
   - Add user to request context
 
-- [ ] T090 [P] RBAC middleware in `backend/internal/middleware/rbac.go`
+- [x] T090 [P] RBAC middleware in `backend/internal/middleware/rbac.go`
 
   - Check user roles (Super Admin, Org Admin, Coordinator, Volunteer)
   - Verify organization membership for org-specific actions
 
-- [ ] T091 [P] Rate limiting middleware in `backend/internal/middleware/rate_limit.go`
+- [x] T091 [P] Rate limiting middleware in `backend/internal/middleware/rate_limit.go`
 
   - 100 requests per minute per user (general)
   - 5 login attempts per 15 minutes per IP
 
-- [ ] T092 [P] CORS middleware in `backend/internal/middleware/cors.go`
+- [x] T092 [P] CORS middleware in `backend/internal/middleware/cors.go`
 
   - Configure allowed origins
   - Configure allowed methods and headers
 
-- [ ] T093 [P] Logging middleware in `backend/internal/middleware/logging.go`
+- [x] T093 [P] Logging middleware in `backend/internal/middleware/logging.go`
 
   - Log all requests (method, path, status, duration)
   - Add request ID to context
   - No PII in logs
 
-- [ ] T094 [P] Recovery middleware in `backend/internal/middleware/recovery.go`
+- [x] T094 [P] Recovery middleware in `backend/internal/middleware/recovery.go`
   - Catch panics
   - Return 500 error
   - Log stack trace
