@@ -215,9 +215,18 @@ func (r *gormOpportunityRepository) ListOpportunities(ctx context.Context, filte
 		return nil, fmt.Errorf("failed to count opportunities: %w", err)
 	}
 
-	// Apply sorting
+	// Apply sorting (with whitelist validation)
+	allowedSortFields := map[string]bool{
+		"created_at":   true,
+		"start_date":   true,
+		"title":        true,
+		"city":         true,
+		"state":        true,
+		"min_age":      true,
+		// Add any more allowed fields here (ensure they match DB columns!)
+	}
 	sortBy := "created_at"
-	if filters.SortBy != "" {
+	if filters.SortBy != "" && allowedSortFields[filters.SortBy] {
 		sortBy = filters.SortBy
 	}
 	sortOrder := "DESC"
