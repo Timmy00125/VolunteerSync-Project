@@ -10,6 +10,11 @@
  * - Request/response interceptors
  * - Type-safe API calls
  * - Consistent error handling
+ *
+ * **Token Management:**
+ * This client reads tokens from the Zustand auth store (localStorage key: 'auth-storage').
+ * The auth store is the single source of truth for authentication state.
+ * Tokens are automatically synced when refreshed.
  */
 
 import type {
@@ -28,33 +33,75 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 const TOKEN_REFRESH_ENDPOINT = '/auth/refresh';
-const TOKEN_STORAGE_KEY = 'volunteersync_tokens';
+const AUTH_STORAGE_KEY = 'auth-storage'; // Matches Zustand persist key
 
 // ============================================================================
 // Token Management
 // ============================================================================
 
 /**
- * Store authentication tokens in localStorage
+ * Get auth state from Zustand persist storage
+ */
+function getAuthState(): { user: any; tokens: AuthTokens | null; isAuthenticated: boolean } | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored);
+    return parsed.state || null;
+  } catch (error) {
+    console.error('Failed to parse auth state:', error);
+    return null;
+  }
+}
+
+/**
+ * Update tokens in Zustand persist storage
+ */
+function updateAuthTokens(tokens: AuthTokens): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const authState = getAuthState();
+    if (!authState) {
+      console.warn('Cannot update tokens: No auth state found');
+      return;
+    }
+
+    // Update only the tokens in the auth state
+    const updatedState = {
+      ...authState,
+      tokens,
+    };
+
+    localStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({
+        state: updatedState,
+        version: 0,
+      })
+    );
+  } catch (error) {
+    console.error('Failed to update tokens:', error);
+  }
+}
+
+/**
+ * Store authentication tokens in localStorage (legacy support)
+ * @deprecated Use auth store instead
  */
 export function setTokens(tokens: AuthTokens): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokens));
+  updateAuthTokens(tokens);
 }
 
 /**
  * Retrieve authentication tokens from localStorage
  */
 export function getTokens(): AuthTokens | null {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const stored = localStorage.getItem(TOKEN_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch (error) {
-    console.error('Failed to parse stored tokens:', error);
-    return null;
-  }
+  const authState = getAuthState();
+  return authState?.tokens || null;
 }
 
 /**
@@ -62,7 +109,7 @@ export function getTokens(): AuthTokens | null {
  */
 export function clearTokens(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
 /**
@@ -139,7 +186,8 @@ async function refreshAccessToken(): Promise<string | null> {
       token_type: 'Bearer',
     };
 
-    setTokens(newTokens);
+    // Update tokens in auth store
+    updateAuthTokens(newTokens);
     return newTokens.access_token;
   } catch (error) {
     console.error('Token refresh failed:', error);
