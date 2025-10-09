@@ -753,7 +753,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Header with notifications bell
   - User menu
 
-- [ ] T108 [P] Organization dashboard layout in `frontend/src/app/(dashboard)/organization/layout.tsx`
+- [x] T108 [P] Organization dashboard layout in `frontend/src/app/(dashboard)/organization/layout.tsx`
   - Navigation sidebar (Dashboard, Opportunities, Team, Analytics, Settings)
   - Header with notifications
   - Organization switcher (if member of multiple)
