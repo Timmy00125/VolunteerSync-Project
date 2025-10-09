@@ -740,7 +740,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend - Dashboard Layouts
 
-- [ ] T106 Create root layout in `frontend/src/app/layout.tsx`
+- [x] T106 Create root layout in `frontend/src/app/layout.tsx`
 
   - HTML structure
   - Global styles
