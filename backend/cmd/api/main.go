@@ -50,6 +50,7 @@ import (
 	volunteerRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/repositories"
 	volunteerServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/services"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/config"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/cache"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/database"
@@ -57,22 +58,19 @@ import (
 	appLogger "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
 )
 
-// getEnv retrieves an environment variable with a fallback default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
 func main() {
+	// Load configuration from environment variables
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Initialize logger
-	logLevel := getEnv("LOG_LEVEL", "info")
-	logFormat := getEnv("LOG_FORMAT", "json")
 	appLogger.Init(appLogger.Config{
-		Level:      logLevel,
-		Format:     logFormat,
-		WithCaller: true,
+		Level:      cfg.Logger.Level,
+		Format:     cfg.Logger.Format,
+		WithCaller: cfg.Logger.WithCaller,
 	})
 	log := appLogger.Get()
 
@@ -80,16 +78,16 @@ func main() {
 
 	// Initialize database connection
 	dbConfig := &database.Config{
-		Host:            getEnv("DB_HOST", "localhost"),
-		Port:            getEnv("DB_PORT", "5432"),
-		User:            getEnv("DB_USER", "volunteersync"),
-		Password:        getEnv("DB_PASSWORD", "volunteersync"),
-		DBName:          getEnv("DB_NAME", "volunteersync"),
-		SSLMode:         getEnv("DB_SSLMODE", "disable"),
-		MaxOpenConns:    25,
-		MaxIdleConns:    5,
-		ConnMaxLifetime: 5 * time.Minute,
-		ConnMaxIdleTime: 10 * time.Minute,
+		Host:            cfg.Database.Host,
+		Port:            cfg.Database.Port,
+		User:            cfg.Database.User,
+		Password:        cfg.Database.Password,
+		DBName:          cfg.Database.DBName,
+		SSLMode:         cfg.Database.SSLMode,
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+		ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
 		LogLevel:        logger.Info,
 	}
 
@@ -101,17 +99,17 @@ func main() {
 
 	// Initialize Redis connection
 	redisConfig := &cache.Config{
-		Host:            getEnv("REDIS_HOST", "localhost"),
-		Port:            getEnv("REDIS_PORT", "6379"),
-		Password:        getEnv("REDIS_PASSWORD", ""),
-		DB:              0,
-		MaxRetries:      3,
-		PoolSize:        10,
-		MinIdleConns:    2,
-		ConnMaxIdleTime: 5 * time.Minute,
-		DialTimeout:     5 * time.Second,
-		ReadTimeout:     3 * time.Second,
-		WriteTimeout:    3 * time.Second,
+		Host:            cfg.Redis.Host,
+		Port:            cfg.Redis.Port,
+		Password:        cfg.Redis.Password,
+		DB:              cfg.Redis.DB,
+		MaxRetries:      cfg.Redis.MaxRetries,
+		PoolSize:        cfg.Redis.PoolSize,
+		MinIdleConns:    cfg.Redis.MinIdleConns,
+		ConnMaxIdleTime: cfg.Redis.ConnMaxIdleTime,
+		DialTimeout:     cfg.Redis.DialTimeout,
+		ReadTimeout:     cfg.Redis.ReadTimeout,
+		WriteTimeout:    cfg.Redis.WriteTimeout,
 	}
 
 	redisClient, err := cache.NewClient(redisConfig)
@@ -122,18 +120,17 @@ func main() {
 
 	// Initialize JWT manager
 	jwtConfig := &jwt.Config{
-		AccessSecret:       getEnv("JWT_ACCESS_SECRET", "your-access-secret-change-in-production"),
-		RefreshSecret:      getEnv("JWT_REFRESH_SECRET", "your-refresh-secret-change-in-production"),
-		AccessTokenExpiry:  15 * time.Minute,
-		RefreshTokenExpiry: 7 * 24 * time.Hour,
-		Issuer:             getEnv("JWT_ISSUER", "volunteersync"),
+		AccessSecret:       cfg.JWT.AccessSecret,
+		RefreshSecret:      cfg.JWT.RefreshSecret,
+		AccessTokenExpiry:  cfg.JWT.AccessTokenExpiry,
+		RefreshTokenExpiry: cfg.JWT.RefreshTokenExpiry,
+		Issuer:             cfg.JWT.Issuer,
 	}
 	jwtManager := jwt.NewManager(jwtConfig)
 	log.Info("JWT manager initialized")
 
 	// Set Gin mode
-	ginMode := getEnv("GIN_MODE", "debug")
-	gin.SetMode(ginMode)
+	gin.SetMode(cfg.App.Mode)
 
 	// Create Gin router
 	router := gin.New()
@@ -147,14 +144,15 @@ func main() {
 
 	// 3. CORS middleware
 	corsConfig := middleware.DefaultCORSConfig()
-	// Allow additional origins from environment
-	if additionalOrigins := getEnv("CORS_ALLOWED_ORIGINS", ""); additionalOrigins != "" {
-		corsConfig.AllowedOrigins = append(corsConfig.AllowedOrigins, additionalOrigins)
-	}
+	// Use configured allowed origins
+	corsConfig.AllowedOrigins = cfg.CORS.AllowedOrigins
 	router.Use(middleware.CORSMiddleware(corsConfig))
 
-	// 4. General rate limiting (100 requests per minute)
-	router.Use(middleware.RateLimitMiddleware(redisClient, middleware.DefaultRateLimitConfig()))
+	// 4. General rate limiting
+	rateLimitConfig := middleware.DefaultRateLimitConfig()
+	rateLimitConfig.MaxRequests = cfg.RateLimit.Requests
+	rateLimitConfig.Window = cfg.RateLimit.Window
+	router.Use(middleware.RateLimitMiddleware(redisClient, rateLimitConfig))
 
 	log.Info("Middleware chain configured")
 
@@ -408,8 +406,7 @@ func main() {
 	log.Info("All routes registered")
 
 	// Start HTTP server
-	port := getEnv("PORT", "8080")
-	addr := fmt.Sprintf(":%s", port)
+	addr := fmt.Sprintf(":%s", cfg.App.Port)
 
 	srv := &http.Server{
 		Addr:           addr,
@@ -428,7 +425,7 @@ func main() {
 		}
 	}()
 
-	log.WithField("port", port).Info("Server started successfully")
+	log.WithField("port", cfg.App.Port).Info("Server started successfully")
 
 	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)

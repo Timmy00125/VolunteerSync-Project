@@ -72,9 +72,11 @@ services:
       REDIS_DB: 0
 
       # JWT
-      JWT_SECRET: dev_jwt_secret_change_in_production_minimum_32_characters
+      JWT_ACCESS_SECRET: dev_jwt_access_secret_change_in_production_minimum_32_characters
+      JWT_REFRESH_SECRET: dev_jwt_refresh_secret_change_in_production_minimum_32_characters
       JWT_ACCESS_TOKEN_EXPIRY: 15m
-      JWT_REFRESH_TOKEN_EXPIRY: 7d
+      JWT_REFRESH_TOKEN_EXPIRY: 168h
+      JWT_ISSUER: volunteersync
 
       # Rate Limiting
       RATE_LIMIT_REQUESTS: 100
