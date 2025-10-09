@@ -434,14 +434,40 @@ export interface Message {
 
 export interface Notification {
   id: string;
-  user_id: string;
-  type: string;
+  recipient_id: string;
+  notification_type: string;
   title: string;
-  message: string;
-  is_read: boolean;
+  content: string;
+  action_url?: string;
+  priority: 'low' | 'normal' | 'high' | 'critical';
   related_entity_type?: string;
   related_entity_id?: string;
+  read_at?: string;
+  delivered_at?: string;
+  delivery_method: 'in_app' | 'browser_push';
+  sent_at: string;
   created_at: string;
+}
+
+export interface NotificationsResponse {
+  notifications: Notification[];
+  pagination: {
+    page: number;
+    limit: number;
+    total_pages: number;
+    total_items: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+  unread_count: number;
+}
+
+export interface NotificationFilters {
+  page?: number;
+  limit?: number;
+  unread?: boolean;
+  type?: string;
+  priority?: 'low' | 'normal' | 'high' | 'critical';
 }
 
 // ============================================================================

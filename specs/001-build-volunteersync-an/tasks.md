@@ -861,14 +861,14 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend - Notifications
 
-- [ ] T123 [P] Notifications component in `frontend/src/components/features/notifications/NotificationCenter.tsx`
+- [x] T123 [P] Notifications component in `frontend/src/components/features/notifications/NotificationCenter.tsx`
 
   - Dropdown with unread notifications
   - Notification types: registration_confirmed, hours_logged, achievement_earned, event_reminder, etc.
   - Mark as read action
   - Click to navigate to relevant page
 
-- [ ] T124 [P] Notification badge in `frontend/src/components/features/notifications/NotificationBadge.tsx`
+- [x] T124 [P] Notification badge in `frontend/src/components/features/notifications/NotificationBadge.tsx`
   - Show unread count
   - Update in real-time with React Query polling
 

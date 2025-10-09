@@ -18,6 +18,8 @@ import type {
   DashboardResponse,
   VolunteerProfile,
   UpdateVolunteerProfileInput,
+  NotificationsResponse,
+  NotificationFilters,
 } from './types';
 
 // ============================================================================
@@ -461,6 +463,44 @@ export async function getOpportunityById(id: string): Promise<import('./types').
 }
 
 // ============================================================================
+// Notifications API
+// ============================================================================
+
+/**
+ * Get notifications for the authenticated user
+ */
+export async function getNotifications(
+  filters?: NotificationFilters
+): Promise<NotificationsResponse> {
+  const params = new URLSearchParams();
+
+  if (filters?.page) params.append('page', filters.page.toString());
+  if (filters?.limit) params.append('limit', filters.limit.toString());
+  if (filters?.unread !== undefined) params.append('unread', filters.unread.toString());
+  if (filters?.type) params.append('type', filters.type);
+  if (filters?.priority) params.append('priority', filters.priority);
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/notifications?${queryString}` : '/notifications';
+
+  return get<NotificationsResponse>(endpoint);
+}
+
+/**
+ * Get unread notification count
+ */
+export async function getUnreadCount(): Promise<{ unread_count: number }> {
+  return get<{ unread_count: number }>('/notifications/unread-count');
+}
+
+/**
+ * Mark a notification as read
+ */
+export async function markNotificationAsRead(notificationId: string): Promise<{ message: string }> {
+  return patch<{ message: string }>(`/notifications/${notificationId}/read`, {});
+}
+
+// ============================================================================
 // Default Export
 // ============================================================================
 
@@ -480,4 +520,7 @@ export default {
   updateVolunteerProfile,
   searchOpportunities,
   getOpportunityById,
+  getNotifications,
+  getUnreadCount,
+  markNotificationAsRead,
 };
