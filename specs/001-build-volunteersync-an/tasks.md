@@ -692,7 +692,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Token refresh on 401
   - Error handling
 
-- [ ] T098 [P] React Query setup in `frontend/src/lib/api/query-client.ts`
+- [x] T098 [P] React Query setup in `frontend/src/lib/api/query-client.ts`
 
   - Configure TanStack Query
   - Default cache times

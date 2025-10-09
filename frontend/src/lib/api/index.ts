@@ -6,5 +6,6 @@
 
 export * from './client';
 export * from './types';
+export * from './query-client';
 
 export { default as apiClient } from './client';
