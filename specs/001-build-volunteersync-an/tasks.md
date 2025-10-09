@@ -782,7 +782,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Performance: <2s search results
   - Click to view opportunity detail
 
-- [ ] T112 Opportunity detail page in `frontend/src/app/opportunities/[id]/page.tsx`
+- [x] T112 Opportunity detail page in `frontend/src/app/opportunities/[id]/page.tsx`
 
   - Opportunity information (title, description, date, location, capacity)
   - Organization information
@@ -790,7 +790,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - "Register" button
   - Reviews from past volunteers
 
-- [ ] T113 [P] My events page in `frontend/src/app/(dashboard)/volunteer/events/page.tsx`
+- [x] T113 [P] My events page in `frontend/src/app/(dashboard)/volunteer/events/page.tsx`
 
   - Tabs: Upcoming, Past, Cancelled
   - Event cards with status
@@ -798,7 +798,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Hours verification
   - Write review (after completion)
 
-- [ ] T114 [P] Impact page in `frontend/src/app/(dashboard)/volunteer/impact/page.tsx`
+- [x] T114 [P] Impact page in `frontend/src/app/(dashboard)/volunteer/impact/page.tsx`
   - Total impact metrics
   - Achievement badges display
   - Hours breakdown by cause
