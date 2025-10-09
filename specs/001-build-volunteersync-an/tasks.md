@@ -566,13 +566,13 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Communications Module
 
-- [ ] T079 [P] Message and notification models in `backend/internal/modules/communications/models/`
+- [x] T079 [P] Message and notification models in `backend/internal/modules/communications/models/`
 
   - Message struct (direct, broadcast types)
   - MessageRecipient struct
   - Notification struct (type enum)
 
-- [ ] T080 [P] Communications repository in `backend/internal/modules/communications/repositories/comm_repository.go`
+- [x] T080 [P] Communications repository in `backend/internal/modules/communications/repositories/comm_repository.go`
 
   - CreateMessage
   - CreateNotification
@@ -580,7 +580,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - MarkNotificationAsRead
   - GetUnreadCount
 
-- [ ] T081 Communications service in `backend/internal/modules/communications/services/comm_service.go`
+- [x] T081 Communications service in `backend/internal/modules/communications/services/comm_service.go`
 
   - SendDirectMessage
   - SendBroadcastMessage (to all event registrants)
@@ -589,7 +589,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - GetUserNotifications
   - MarkNotificationRead
 
-- [ ] T082 Communications handlers in `backend/internal/modules/communications/handlers/comm_handlers.go`
+- [x] T082 Communications handlers in `backend/internal/modules/communications/handlers/comm_handlers.go`
   - POST /messages handler
   - GET /notifications handler
   - PATCH /notifications/{id}/read handler
