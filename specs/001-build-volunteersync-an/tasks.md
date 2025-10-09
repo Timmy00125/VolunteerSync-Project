@@ -806,20 +806,20 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend - Organization Features
 
-- [ ] T115 [P] Organization dashboard page in `frontend/src/app/(dashboard)/organization/page.tsx`
+- [x] T115 [P] Organization dashboard page in `frontend/src/app/(dashboard)/organization/page.tsx`
 
   - Metrics: volunteers recruited, hours contributed, events hosted
   - Upcoming events
   - Recent registrations
   - Analytics charts
 
-- [ ] T116 Create organization form in `frontend/src/app/(dashboard)/organization/new/page.tsx`
+- [x] T116 Create organization form in `frontend/src/app/(dashboard)/organization/new/page.tsx`
 
   - Organization profile form (name, mission, description, address, logo)
   - Cause selection
   - Submit to POST /organizations
 
-- [ ] T117 Create opportunity form in `frontend/src/app/(dashboard)/organization/opportunities/new/page.tsx`
+- [x] T117 Create opportunity form in `frontend/src/app/(dashboard)/organization/opportunities/new/page.tsx`
 
   - Opportunity form (title, description, date/time, location, capacity, min age)
   - Skill requirements
@@ -833,27 +833,27 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Edit, cancel, complete actions
   - View registrations
 
-- [ ] T119 Event roster page in `frontend/src/app/(dashboard)/organization/opportunities/[id]/roster/page.tsx`
+- [x] T119 Event roster page in `frontend/src/app/(dashboard)/organization/opportunities/[id]/roster/page.tsx`
 
   - List of registered volunteers
   - Check-in volunteers
   - Send broadcast message to all
   - Log hours after event
 
-- [ ] T120 Hours logging page in `frontend/src/app/(dashboard)/organization/opportunities/[id]/hours/page.tsx`
+- [x] T120 Hours logging page in `frontend/src/app/(dashboard)/organization/opportunities/[id]/hours/page.tsx`
 
   - Table of checked-in volunteers
   - Input hours for each volunteer
   - Add coordinator notes
   - Submit hours (creates pending records)
 
-- [ ] T121 [P] Team management page in `frontend/src/app/(dashboard)/organization/team/page.tsx`
+- [x] T121 [P] Team management page in `frontend/src/app/(dashboard)/organization/team/page.tsx`
 
   - List team members with roles
   - Invite new members (send email invitation)
   - Remove members
 
-- [ ] T122 [P] Organization analytics page in `frontend/src/app/(dashboard)/organization/analytics/page.tsx`
+- [x] T122 [P] Organization analytics page in `frontend/src/app/(dashboard)/organization/analytics/page.tsx`
   - Volunteers by cause chart
   - Hours contributed over time
   - Volunteer retention rate

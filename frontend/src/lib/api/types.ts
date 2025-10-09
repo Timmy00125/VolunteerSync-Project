@@ -115,6 +115,107 @@ export interface Organization {
   updated_at: string;
 }
 
+export interface CreateOrganizationInput {
+  name: string;
+  description: string;
+  mission?: string;
+  website?: string;
+  email: string;
+  phone?: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+  logo_url?: string;
+  cause_ids?: string[];
+}
+
+export interface UpdateOrganizationInput {
+  name?: string;
+  description?: string;
+  mission?: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  country?: string;
+  logo_url?: string;
+  cause_ids?: string[];
+}
+
+export interface OrganizationDashboard {
+  organization: Organization;
+  metrics: {
+    total_volunteers: number;
+    active_volunteers: number;
+    total_hours: number;
+    hours_this_month: number;
+    total_events: number;
+    upcoming_events: number;
+    events_this_month: number;
+    volunteer_retention_rate: number;
+  };
+  upcoming_events: UpcomingOrganizationEvent[];
+  recent_registrations: RecentRegistration[];
+}
+
+export interface UpcomingOrganizationEvent {
+  id: string;
+  title: string;
+  date: string;
+  start_time: string;
+  registered_count: number;
+  capacity: number;
+  status: string;
+}
+
+export interface RecentRegistration {
+  id: string;
+  volunteer_name: string;
+  opportunity_title: string;
+  registered_at: string;
+  status: string;
+}
+
+export interface OrganizationAnalytics {
+  volunteers_by_cause: Array<{
+    cause: string;
+    count: number;
+  }>;
+  hours_over_time: Array<{
+    month: string;
+    hours: number;
+  }>;
+  volunteer_retention_rate: number;
+  event_completion_rate: number;
+  average_volunteers_per_event: number;
+  top_volunteers: Array<{
+    id: string;
+    name: string;
+    hours: number;
+    events: number;
+  }>;
+}
+
+export interface TeamMember {
+  id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: 'admin' | 'coordinator' | 'volunteer';
+  joined_at: string;
+}
+
+export interface InviteMemberInput {
+  email: string;
+  role: 'admin' | 'coordinator';
+}
+
 // ============================================================================
 // Volunteer Types
 // ============================================================================

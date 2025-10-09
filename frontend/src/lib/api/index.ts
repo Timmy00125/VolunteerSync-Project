@@ -10,5 +10,6 @@ export * from './query-client';
 export * from './hooks/volunteers';
 export * from './hooks/opportunities';
 export * from './hooks/registrations';
+export * from './hooks/organizations';
 
 export { default as apiClient } from './client';

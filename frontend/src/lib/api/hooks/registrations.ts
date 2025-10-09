@@ -103,3 +103,28 @@ export function useCancelRegistration() {
     },
   });
 }
+
+// ============================================================================
+// Get Registrations by Opportunity Hook
+// ============================================================================
+
+/**
+ * Hook to fetch registrations for a specific opportunity
+ *
+ * @param opportunityId - The opportunity ID
+ * @returns React Query result with registrations
+ */
+export function useOpportunityRegistrations(opportunityId: string) {
+  return useQuery<Registration[]>({
+    queryKey: queryKeys.registrations.byOpportunity(opportunityId),
+    queryFn: async () => {
+      const response = await apiClient.get<{ data: Registration[] }>(
+        `/opportunities/${opportunityId}/registrations`
+      );
+      return response.data;
+    },
+    enabled: !!opportunityId,
+    staleTime: CACHE_TIMES.STALE_TIME.SHORT, // 1 minute
+    gcTime: CACHE_TIMES.CACHE_TIME.SHORT, // 5 minutes
+  });
+}

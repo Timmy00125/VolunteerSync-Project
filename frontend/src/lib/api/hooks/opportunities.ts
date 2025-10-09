@@ -4,10 +4,11 @@
  * React Query hooks for opportunity-related data fetching.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, CACHE_TIMES } from '../query-client';
 import { searchOpportunities, getOpportunityById } from '../client';
 import type { Opportunity, OpportunitySearchParams, PaginatedResponse } from '../types';
+import apiClient from '../client';
 
 // ============================================================================
 // Search Hook
@@ -102,5 +103,47 @@ export function useOpportunity(id: string, enabled = true) {
     staleTime: CACHE_TIMES.STALE_TIME.MEDIUM, // 5 minutes
     gcTime: CACHE_TIMES.CACHE_TIME.MEDIUM, // 30 minutes
     enabled: enabled && !!id,
+  });
+}
+
+// ============================================================================
+// Create/Update Hooks
+// ============================================================================
+
+/**
+ * Hook to create a new opportunity
+ */
+export function useCreateOpportunity() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Opportunity, Error, any>({
+    mutationFn: async (data: any) => {
+      const response = await apiClient.post<{ data: Opportunity }>('/opportunities', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.opportunities.all });
+    },
+  });
+}
+
+/**
+ * Hook to update an opportunity
+ */
+export function useUpdateOpportunity(opportunityId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<Opportunity, Error, any>({
+    mutationFn: async (data: any) => {
+      const response = await apiClient.patch<{ data: Opportunity }>(
+        `/opportunities/${opportunityId}`,
+        data
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.opportunities.detail(opportunityId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.opportunities.all });
+    },
   });
 }

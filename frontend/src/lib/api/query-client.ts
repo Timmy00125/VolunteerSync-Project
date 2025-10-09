@@ -249,6 +249,9 @@ export const queryKeys = {
     details: () => [...queryKeys.organizations.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.organizations.details(), id] as const,
     members: (id: string) => [...queryKeys.organizations.detail(id), 'members'] as const,
+    dashboard: (id: string) => [...queryKeys.organizations.detail(id), 'dashboard'] as const,
+    analytics: (id: string) => [...queryKeys.organizations.detail(id), 'analytics'] as const,
+    team: (id: string) => [...queryKeys.organizations.detail(id), 'team'] as const,
   },
 
   // Users
