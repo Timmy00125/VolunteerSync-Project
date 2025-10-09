@@ -225,30 +225,45 @@ func main() {
 		log,
 	)
 
-	// Registration service (depends on opportunity service)
+	// =============================================================================
+	// Create Adapters for Cross-Module Communication
+	// =============================================================================
+
+	// Opportunity adapter for registration service (capacity checks)
+	oppAdapter := regServices.NewOpportunityServiceAdapter(oppService)
+
+	// Registration service (depends on opportunity service via adapter)
 	// Notification service is optional for now
 	regService := regServices.NewRegistrationService(
 		regRepo,
-		nil, // opportunity service adapter - will need implementation
-		nil, // notification service - can be added later
+		oppAdapter, // opportunity service adapter - NOW WIRED
+		nil,        // notification service - can be added later
 		*log,
 	)
 
-	// Hours service (depends on registration and volunteer services)
+	// Registration adapter for hours service (hour logging workflow)
+	regAdapter := hoursServices.NewRegistrationServiceAdapter(regService)
+
+	// Volunteer adapter for hours service (total hours increment)
+	volunteerAdapter := hoursServices.NewVolunteerServiceAdapter(volunteerRepo)
+
+	// Hours service (depends on registration and volunteer services via adapters)
 	// Notification service is optional for now
 	hoursService := hoursServices.NewHoursService(
 		hoursRepo,
-		nil, // registration service adapter - will need implementation
-		nil, // volunteer service adapter - will need implementation
-		nil, // notification service - can be added later
+		regAdapter,       // registration service adapter - NOW WIRED
+		volunteerAdapter, // volunteer service adapter - NOW WIRED
+		nil,              // notification service - can be added later
 		*log,
 	)
 
-	// Communications service (depends on registration repo for broadcast messages)
-	// Note: Registration repo needs FindVolunteersByOpportunity method - passing nil for now
+	// Registration repository adapter for communications service (broadcast messages)
+	regRepoAdapter := commServices.NewRegistrationRepositoryAdapter(regRepo)
+
+	// Communications service (depends on registration repo via adapter for broadcast messages)
 	commService := commServices.NewCommunicationsService(
 		commRepo,
-		nil, // registration repo adapter - will need implementation
+		regRepoAdapter, // registration repo adapter - NOW WIRED
 		log,
 	)
 
