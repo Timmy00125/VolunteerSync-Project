@@ -12,21 +12,43 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm/logger"
 
+	achievementHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/achievements/handlers"
+	achievementRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/achievements/repositories"
+	achievementServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/achievements/services"
+
+	analyticsHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/analytics/handlers"
+	analyticsServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/analytics/services"
+
 	authHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/auth/handlers"
 	authRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/auth/repositories"
 	authServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/auth/services"
 
+	commHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/communications/handlers"
+	commRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/communications/repositories"
+	commServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/communications/services"
+
+	hoursHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/hours/handlers"
+	hoursRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/hours/repositories"
+	hoursServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/hours/services"
+
+	oppHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/opportunities/handlers"
+	oppRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/opportunities/repositories"
+	oppServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/opportunities/services"
+
+	orgHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/handlers"
+	orgRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/repositories"
+	orgServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/services"
+
+	regHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/registrations/handlers"
+	regRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/registrations/repositories"
+	regServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/registrations/services"
+
 	userHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/users/handlers"
 	userServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/users/services"
 
-	achievementHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/achievements/handlers"
-	analyticsHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/analytics/handlers"
-	commHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/communications/handlers"
-	hoursHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/hours/handlers"
-	oppHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/opportunities/handlers"
-	orgHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/handlers"
-	regHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/registrations/handlers"
 	volunteerHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/handlers"
+	volunteerRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/repositories"
+	volunteerServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/services"
 
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/cache"
@@ -142,10 +164,25 @@ func main() {
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 
-	// Initialize repositories
+	// =============================================================================
+	// Initialize Repositories
+	// =============================================================================
 	authRepo := authRepos.NewAuthRepository(dbConn.DB)
+	orgRepo := orgRepos.NewOrganizationRepository(dbConn.DB)
+	volunteerRepo := volunteerRepos.NewVolunteerRepository(dbConn.DB)
+	oppRepo := oppRepos.NewOpportunityRepository(dbConn.DB)
+	regRepo := regRepos.NewRegistrationRepository(dbConn.DB)
+	hoursRepo := hoursRepos.NewHoursRepository(dbConn.DB)
+	commRepo := commRepos.NewCommunicationsRepository(dbConn.DB)
+	achievementRepo := achievementRepos.NewAchievementRepository(dbConn.DB)
 
-	// Initialize services
+	log.Info("All repositories initialized")
+
+	// =============================================================================
+	// Initialize Services (note: some services depend on other services)
+	// =============================================================================
+
+	// Auth service (no dependencies on other services)
 	authServiceConfig := authServices.DefaultConfig()
 	authService, err := authServices.NewAuthService(
 		authRepo,
@@ -158,13 +195,81 @@ func main() {
 		log.WithField("error", err.Error()).Fatal("Failed to create auth service")
 	}
 
+	// User service (depends on authRepo)
 	userService := userServices.NewUserService(
 		authRepo,
 		dbConn.DB,
 		*log,
 	)
 
-	// Initialize handlers
+	// Organization service (geocoding service is optional, passing nil)
+	orgService := orgServices.NewOrganizationService(
+		orgRepo,
+		nil, // geocoding service - can be added later
+		log,
+	)
+
+	// Volunteer service (geocoding service is optional, passing nil)
+	volunteerService := volunteerServices.NewVolunteerService(
+		volunteerRepo,
+		nil, // geocoding service - can be added later
+		log,
+	)
+
+	// Opportunity service (notification service is optional for now, passing nil)
+	// Geocoding service is also optional
+	oppService := oppServices.NewOpportunityService(
+		oppRepo,
+		nil, // geocoding service - can be added later
+		nil, // notification service - can be added later
+		log,
+	)
+
+	// Registration service (depends on opportunity service)
+	// Notification service is optional for now
+	regService := regServices.NewRegistrationService(
+		regRepo,
+		nil, // opportunity service adapter - will need implementation
+		nil, // notification service - can be added later
+		*log,
+	)
+
+	// Hours service (depends on registration and volunteer services)
+	// Notification service is optional for now
+	hoursService := hoursServices.NewHoursService(
+		hoursRepo,
+		nil, // registration service adapter - will need implementation
+		nil, // volunteer service adapter - will need implementation
+		nil, // notification service - can be added later
+		*log,
+	)
+
+	// Communications service (depends on registration repo for broadcast messages)
+	// Note: Registration repo needs FindVolunteersByOpportunity method - passing nil for now
+	commService := commServices.NewCommunicationsService(
+		commRepo,
+		nil, // registration repo adapter - will need implementation
+		log,
+	)
+
+	// Analytics service (uses direct DB access)
+	analyticsService := analyticsServices.NewAnalyticsService(
+		dbConn.DB,
+		*log,
+	)
+
+	// Achievement service
+	achievementService := achievementServices.NewAchievementService(
+		achievementRepo,
+		log,
+	)
+
+	log.Info("All services initialized")
+
+	// =============================================================================
+	// Initialize Handlers
+	// =============================================================================
+
 	authHandler, err := authHandlers.NewAuthHandler(
 		authService,
 		&redisRateLimiterAdapter{client: redisClient},
@@ -178,6 +283,46 @@ func main() {
 	userHandler, err := userHandlers.NewUserHandler(userService, log)
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("Failed to create user handler")
+	}
+
+	orgHandler, err := orgHandlers.NewOrganizationHandler(orgService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create organization handler")
+	}
+
+	volunteerHandler, err := volunteerHandlers.NewVolunteerHandler(volunteerService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create volunteer handler")
+	}
+
+	oppHandler, err := oppHandlers.NewOpportunityHandler(oppService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create opportunity handler")
+	}
+
+	regHandler, err := regHandlers.NewRegistrationHandler(regService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create registration handler")
+	}
+
+	hoursHandler, err := hoursHandlers.NewHoursHandler(hoursService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create hours handler")
+	}
+
+	commHandler, err := commHandlers.NewCommunicationsHandler(commService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create communications handler")
+	}
+
+	analyticsHandler, err := analyticsHandlers.NewAnalyticsHandler(analyticsService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create analytics handler")
+	}
+
+	achievementHandler, err := achievementHandlers.NewAchievementHandler(achievementService, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create achievement handler")
 	}
 
 	log.Info("All handlers initialized")
@@ -197,72 +342,35 @@ func main() {
 	usersGroup := authenticated.Group("/users")
 	userHandler.RegisterRoutes(usersGroup)
 
-	// TODO: Initialize remaining module services and handlers
-	// For now, we'll create placeholder handlers with nil services to establish routing structure
-	// These should be replaced with proper service initialization once dependencies are resolved
-
 	// Organizations routes
-	orgHandler, err := orgHandlers.NewOrganizationHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create organization handler")
-	}
 	orgsGroup := authenticated.Group("/organizations")
 	orgHandler.RegisterRoutes(orgsGroup)
 
 	// Volunteers routes
-	volunteerHandler, err := volunteerHandlers.NewVolunteerHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create volunteer handler")
-	}
 	volunteersGroup := authenticated.Group("/volunteers")
 	volunteerHandler.RegisterRoutes(volunteersGroup)
 
 	// Opportunities routes (mixed: list/get are public with optional auth, create/update/delete require auth)
-	oppHandler, err := oppHandlers.NewOpportunityHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create opportunity handler")
-	}
-	// Public opportunities routes
 	publicOppsGroup := v1.Group("/opportunities")
 	oppHandler.RegisterRoutes(publicOppsGroup)
 
 	// Registrations routes
-	regHandler, err := regHandlers.NewRegistrationHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create registration handler")
-	}
 	regsGroup := authenticated.Group("/registrations")
 	regHandler.RegisterRoutes(regsGroup)
 
 	// Hours tracking routes
-	hoursHandler, err := hoursHandlers.NewHoursHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create hours handler")
-	}
 	hoursGroup := authenticated.Group("/hours")
 	hoursHandler.RegisterRoutes(hoursGroup)
 
 	// Communications routes (messages and notifications)
-	commHandler, err := commHandlers.NewCommunicationsHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create communications handler")
-	}
 	commGroup := authenticated.Group("/communications")
 	commHandler.RegisterRoutes(commGroup)
 
 	// Achievements routes (mixed: list/get are public, create/award require auth)
-	achievementHandler, err := achievementHandlers.NewAchievementHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create achievement handler")
-	}
 	achievementsGroup := v1.Group("/achievements")
 	achievementHandler.RegisterRoutes(achievementsGroup)
 
 	// Analytics routes
-	analyticsHandler, err := analyticsHandlers.NewAnalyticsHandler(nil, log)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to create analytics handler")
-	}
 	analyticsGroup := authenticated.Group("/analytics")
 	analyticsHandler.RegisterRoutes(analyticsGroup)
 
