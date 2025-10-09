@@ -874,20 +874,20 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend - Shared Components
 
-- [ ] T125 [P] Opportunity card component in `frontend/src/components/features/opportunities/OpportunityCard.tsx`
+- [x] T125 [P] Opportunity card component in `frontend/src/components/features/opportunities/OpportunityCard.tsx`
 
   - Display opportunity summary
   - Show organization info
   - Capacity indicator
   - Cause badges
 
-- [ ] T126 [P] Map component in `frontend/src/components/shared/Map.tsx`
+- [x] T126 [P] Map component in `frontend/src/components/shared/Map.tsx`
 
   - Leaflet integration
   - Display opportunity markers
   - Click marker to view detail
 
-- [ ] T127 [P] Calendar integration in `frontend/src/lib/utils/calendar.ts`
+- [x] T127 [P] Calendar integration in `frontend/src/lib/utils/calendar.ts`
   - Generate .ics file for event
   - Download or add to Google Calendar
 
