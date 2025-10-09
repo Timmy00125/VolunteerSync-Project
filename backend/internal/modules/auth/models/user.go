@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -108,10 +109,13 @@ func hashWithArgon2(plaintext string) (string, error) {
 // verifyArgon2Hash verifies a plaintext string against an Argon2 hash
 func verifyArgon2Hash(plaintext, hashString string) (bool, error) {
 	// Split the hash string into salt and hash
-	var encodedSalt, encodedHash string
-	if _, err := fmt.Sscanf(hashString, "%s$%s", &encodedSalt, &encodedHash); err != nil {
-		return false, fmt.Errorf("invalid hash format: %w", err)
+	parts := strings.Split(hashString, "$")
+	if len(parts) != 2 {
+		return false, fmt.Errorf("invalid hash format: expected 'salt$hash', got %d parts", len(parts))
 	}
+
+	encodedSalt := parts[0]
+	encodedHash := parts[1]
 
 	// Decode salt and hash from base64
 	salt, err := base64.RawStdEncoding.DecodeString(encodedSalt)
