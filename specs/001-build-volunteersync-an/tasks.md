@@ -610,23 +610,23 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Achievements Module
 
-- [ ] T085 [P] Achievement model in `backend/internal/modules/achievements/models/achievement.go`
+- [x] T085 [P] Achievement model in `backend/internal/modules/achievements/models/achievement.go`
 
   - Achievement struct (badge definition)
   - VolunteerAchievement junction
 
-- [ ] T086 [P] Achievement repository in `backend/internal/modules/achievements/repositories/achievement_repository.go`
+- [x] T086 [P] Achievement repository in `backend/internal/modules/achievements/repositories/achievement_repository.go`
 
   - CreateAchievement
   - AwardAchievement
   - FindVolunteerAchievements
 
-- [ ] T087 Achievement service in `backend/internal/modules/achievements/services/achievement_service.go`
+- [x] T087 Achievement service in `backend/internal/modules/achievements/services/achievement_service.go`
 
   - CheckAndAwardAchievements (cron job, check criteria like "First Event", "10 Hours", "5 Organizations")
   - GetVolunteerAchievements
 
-- [ ] T088 Achievement handlers in `backend/internal/modules/achievements/handlers/achievement_handlers.go`
+- [x] T088 Achievement handlers in `backend/internal/modules/achievements/handlers/achievement_handlers.go`
   - GET /achievements handler (list all available)
   - GET /volunteers/{id}/achievements handler
 
