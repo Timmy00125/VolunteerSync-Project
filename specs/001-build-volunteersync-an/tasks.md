@@ -703,7 +703,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Auth store (user, tokens, login, logout)
   - Notification store (unread count, notifications list)
 
-- [ ] T100 [P] shadcn/ui component installation
+- [x] T100 [P] shadcn/ui component installation
 
   - Install and configure shadcn/ui
   - Add Button, Input, Card, Dialog, Form components to `frontend/src/components/ui/`
