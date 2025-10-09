@@ -20,8 +20,13 @@ See [official installation guide](https://github.com/golang-migrate/migrate/tree
 **Docker (alternative):**
 
 ```bash
+# For local development (host port 5433)
 docker run -v $(pwd)/migrations:/migrations --network host migrate/migrate \
-  -path /migrations -database "postgresql://user:pass@localhost:5432/dbname?sslmode=disable" up
+  -path /migrations -database "postgresql://user:pass@localhost:5433/dbname?sslmode=disable" up
+
+# For Docker network (container port 5432)
+docker run -v $(pwd)/migrations:/migrations --network volunteersync-network migrate/migrate \
+  -path /migrations -database "postgresql://user:pass@postgres:5432/dbname?sslmode=disable" up
 ```
 
 ## Using the Migration Script

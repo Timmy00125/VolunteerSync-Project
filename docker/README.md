@@ -36,8 +36,8 @@ docker compose -f docker/docker-compose.yml down -v
 
 The development environment includes:
 
-- **PostgreSQL 16** - Database on port 5432
-- **Redis 7** - Cache and session store on port 6379
+- **PostgreSQL 16** - Database on port 5433 (mapped from container port 5432)
+- **Redis 7** - Cache and session store on port 6380 (mapped from container port 6379)
 - **Backend API** - Go application on port 8080
 - **Frontend** - Next.js application on port 3000
 
@@ -46,7 +46,7 @@ The development environment includes:
 **PostgreSQL:**
 
 - Host: localhost
-- Port: 5432
+- Port: 5433
 - Database: volunteersync
 - Username: volunteersync
 - Password: volunteersync_dev_password
@@ -54,7 +54,7 @@ The development environment includes:
 **Redis:**
 
 - Host: localhost
-- Port: 6379
+- Port: 6380
 - Password: volunteersync_redis_password
 
 ### Accessing Services
@@ -62,8 +62,8 @@ The development environment includes:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8080
 - Backend Health Check: http://localhost:8080/health
-- PostgreSQL: localhost:5432
-- Redis: localhost:6379
+- PostgreSQL: localhost:5433
+- Redis: localhost:6380
 
 ## Production Environment
 
