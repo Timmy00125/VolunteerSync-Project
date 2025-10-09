@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/hours/models"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/hours/services"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
@@ -116,18 +117,8 @@ func (h *HoursHandler) LogHours(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user ID from context (should be set by auth middleware)
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-		return
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	// Verify user is a coordinator (should be checked by RBAC middleware)
 	role, exists := c.Get("role")
@@ -268,18 +259,8 @@ func (h *HoursHandler) ResolveDispute(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-		return
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	// Verify user is a coordinator (should be checked by RBAC middleware)
 	role, exists := c.Get("role")

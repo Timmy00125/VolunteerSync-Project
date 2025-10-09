@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/communications/models"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/communications/services"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
@@ -111,28 +112,8 @@ func (h *CommunicationsHandler) CreateMessage(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		// Try parsing from string
-		userIDStr, ok := userID.(string)
-		if !ok {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-			return
-		}
-		var err error
-		userUUID, err = uuid.Parse(userIDStr)
-		if err != nil {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID format"))
-			return
-		}
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 
@@ -213,28 +194,8 @@ func (h *CommunicationsHandler) CreateMessage(c *gin.Context) {
 // ListNotifications handles GET /notifications
 // Retrieves paginated notifications for the authenticated user with filters
 func (h *CommunicationsHandler) ListNotifications(c *gin.Context) {
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		// Try parsing from string
-		userIDStr, ok := userID.(string)
-		if !ok {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-			return
-		}
-		var err error
-		userUUID, err = uuid.Parse(userIDStr)
-		if err != nil {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID format"))
-			return
-		}
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 
@@ -308,28 +269,8 @@ func (h *CommunicationsHandler) ListNotifications(c *gin.Context) {
 // MarkNotificationAsRead handles PATCH /notifications/:id/read
 // Marks a notification as read for the authenticated user
 func (h *CommunicationsHandler) MarkNotificationAsRead(c *gin.Context) {
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		// Try parsing from string
-		userIDStr, ok := userID.(string)
-		if !ok {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-			return
-		}
-		var err error
-		userUUID, err = uuid.Parse(userIDStr)
-		if err != nil {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID format"))
-			return
-		}
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	// Parse notification ID from URL
 	notificationIDStr := c.Param("id")
@@ -355,28 +296,8 @@ func (h *CommunicationsHandler) MarkNotificationAsRead(c *gin.Context) {
 // GetUnreadCount handles GET /notifications/unread-count
 // Returns the count of unread notifications for the authenticated user
 func (h *CommunicationsHandler) GetUnreadCount(c *gin.Context) {
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		// Try parsing from string
-		userIDStr, ok := userID.(string)
-		if !ok {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-			return
-		}
-		var err error
-		userUUID, err = uuid.Parse(userIDStr)
-		if err != nil {
-			h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID format"))
-			return
-		}
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/analytics/services"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
@@ -115,18 +116,8 @@ func (h *AnalyticsHandler) GetVolunteerAnalytics(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-		return
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 
@@ -181,18 +172,8 @@ func (h *AnalyticsHandler) GetOrganizationAnalytics(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-		return
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 
@@ -236,18 +217,8 @@ func (h *AnalyticsHandler) GetPlatformAnalytics(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user ID from context
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	userUUID, ok := userID.(uuid.UUID)
-	if !ok {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
-		return
-	}
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
 
 	// Check if user has admin role
 	// TODO: Implement proper role-based access control

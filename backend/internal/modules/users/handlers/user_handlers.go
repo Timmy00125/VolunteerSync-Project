@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/users/services"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
@@ -83,19 +83,8 @@ type updateUserRequest struct {
 // - 404 Not Found: User not found
 // - 500 Internal Server Error: Server error
 func (h *UserHandler) GetCurrentUser(c *gin.Context) {
-	// Extract user ID from context (set by auth middleware)
-	userIDStr, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("Authentication required"))
-		return
-	}
-
-	// Parse user ID as UUID
-	userID, err := uuid.Parse(userIDStr.(string))
-	if err != nil {
-		h.respondWithError(c, apperrors.NewBadRequestError("Invalid user ID format").WithError(err))
-		return
-	}
+	// Extract user UUID from context (set by auth and context enrichment middleware)
+	userID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 
@@ -136,19 +125,8 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 // - 409 Conflict: Email already in use by another user
 // - 500 Internal Server Error: Server error
 func (h *UserHandler) UpdateCurrentUser(c *gin.Context) {
-	// Extract user ID from context (set by auth middleware)
-	userIDStr, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("Authentication required"))
-		return
-	}
-
-	// Parse user ID as UUID
-	userID, err := uuid.Parse(userIDStr.(string))
-	if err != nil {
-		h.respondWithError(c, apperrors.NewBadRequestError("Invalid user ID format").WithError(err))
-		return
-	}
+	// Extract user UUID from context (set by auth and context enrichment middleware)
+	userID := middleware.MustGetUserUUID(c)
 
 	// Bind and validate request body
 	var req updateUserRequest
@@ -211,19 +189,8 @@ func (h *UserHandler) UpdateCurrentUser(c *gin.Context) {
 // - Send confirmation email
 // - Trigger cleanup of related resources
 func (h *UserHandler) DeleteCurrentUser(c *gin.Context) {
-	// Extract user ID from context (set by auth middleware)
-	userIDStr, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("Authentication required"))
-		return
-	}
-
-	// Parse user ID as UUID
-	userID, err := uuid.Parse(userIDStr.(string))
-	if err != nil {
-		h.respondWithError(c, apperrors.NewBadRequestError("Invalid user ID format").WithError(err))
-		return
-	}
+	// Extract user UUID from context (set by auth and context enrichment middleware)
+	userID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 

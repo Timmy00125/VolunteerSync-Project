@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/registrations/models"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/registrations/services"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
@@ -225,14 +226,8 @@ func (h *RegistrationHandler) CheckInRegistration(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user ID (coordinator)
-	userID, exists := c.Get("user_id")
-	if !exists {
-		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
-		return
-	}
-
-	coordinatorUUID := userID.(uuid.UUID)
+	// Get authenticated user UUID (coordinator) from context (set by auth and context enrichment middleware)
+	coordinatorUUID := middleware.MustGetUserUUID(c)
 
 	ctx := c.Request.Context()
 
