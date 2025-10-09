@@ -273,9 +273,13 @@ func main() {
 		*log,
 	)
 
-	// Achievement service
+	// Communications service adapter for achievement service
+	commServiceAdapter := achievementServices.NewCommunicationsServiceAdapter(commService)
+
+	// Achievement service (depends on communications service for notifications)
 	achievementService := achievementServices.NewAchievementService(
 		achievementRepo,
+		commServiceAdapter,
 		log,
 	)
 

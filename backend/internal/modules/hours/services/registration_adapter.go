@@ -44,14 +44,7 @@ func (a *registrationServiceAdapter) GetRegistration(ctx context.Context, regist
 // UpdateRegistrationHours updates the hours information on a registration record
 // This is called after hours are logged to keep registration data in sync
 func (a *registrationServiceAdapter) UpdateRegistrationHours(ctx context.Context, registrationID uuid.UUID, hours float64, status string) error {
-	// Note: This would require adding a method to the registration service
-	// For now, we'll acknowledge this limitation in the adapter
-	// The registration service would need to implement:
-	// UpdateHoursInformation(ctx context.Context, registrationID uuid.UUID, hours float64, hoursStatus string) error
-
-	// TODO: Once registration service implements UpdateHoursInformation, call it here
-	// For now, this is a no-op to avoid breaking the build
-	// The hours are still tracked correctly in the hours_logs table
-
-	return nil // Placeholder until registration service adds the method
+	// Call the registration service's UpdateHoursInformation method
+	// This method was implemented to synchronize hours data between hours_logs and registrations tables
+	return a.regService.UpdateHoursInformation(ctx, registrationID, hours, status)
 }

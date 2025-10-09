@@ -13,6 +13,25 @@ import (
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
 )
 
+// CommunicationsService defines the interface for sending notifications
+// This is injected from the communications module to avoid circular dependencies
+type CommunicationsService interface {
+	CreateNotification(ctx context.Context, input CreateNotificationInput) error
+}
+
+// CreateNotificationInput represents input for creating a notification
+type CreateNotificationInput struct {
+	RecipientID       uuid.UUID
+	NotificationType  string
+	Title             string
+	Content           string
+	ActionURL         *string
+	Priority          string
+	RelatedEntityType *string
+	RelatedEntityID   *uuid.UUID
+	DeliveryMethod    string
+}
+
 // AchievementService encapsulates achievement business logic, providing methods for
 // checking eligibility, awarding badges, and retrieving volunteer achievements.
 // Handlers and cron jobs should depend on this interface.
@@ -70,16 +89,19 @@ type CreateCustomAchievementInput struct {
 // achievementService is the concrete implementation of AchievementService
 type achievementService struct {
 	achievementRepo repositories.AchievementRepository
+	commService     CommunicationsService
 	logger          *logger.Logger
 }
 
 // NewAchievementService creates a new instance of AchievementService
 func NewAchievementService(
 	achievementRepo repositories.AchievementRepository,
+	commService CommunicationsService,
 	logger *logger.Logger,
 ) AchievementService {
 	return &achievementService{
 		achievementRepo: achievementRepo,
+		commService:     commService,
 		logger:          logger,
 	}
 }
@@ -353,7 +375,36 @@ func (s *achievementService) AwardCustomAchievement(ctx context.Context, input A
 		"awarded_by_user_id":   input.AwardedByUserID,
 	}).Info("Custom achievement awarded")
 
-	// TODO: Send notification to volunteer (FR-076)
+	// Send notification to volunteer (FR-076)
+	if s.commService != nil {
+		actionURL := "/volunteer/achievements"
+		entityType := "achievement"
+		notificationInput := CreateNotificationInput{
+			RecipientID:       input.VolunteerProfileID,
+			NotificationType:  "achievement_earned",
+			Title:             "Achievement Unlocked! 🏆",
+			Content:           fmt.Sprintf("Congratulations! You've earned the '%s' achievement: %s", achievement.Name, achievement.Description),
+			ActionURL:         &actionURL,
+			Priority:          "medium",
+			RelatedEntityType: &entityType,
+			RelatedEntityID:   &input.AchievementID,
+			DeliveryMethod:    "in_app",
+		}
+
+		if err := s.commService.CreateNotification(ctx, notificationInput); err != nil {
+			// Log error but don't fail the achievement award operation
+			s.logger.WithFields(map[string]interface{}{
+				"achievement_id":       input.AchievementID,
+				"volunteer_profile_id": input.VolunteerProfileID,
+				"error":                err.Error(),
+			}).Error("Failed to send achievement notification")
+		} else {
+			s.logger.WithFields(map[string]interface{}{
+				"achievement_id":       input.AchievementID,
+				"volunteer_profile_id": input.VolunteerProfileID,
+			}).Info("Achievement notification sent successfully")
+		}
+	}
 
 	return volunteerAchievement, nil
 }

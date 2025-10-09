@@ -94,6 +94,10 @@ type RegistrationService interface {
 	// PromoteFromWaitlist promotes a waitlisted volunteer to confirmed status
 	// Called when a confirmed volunteer cancels
 	PromoteFromWaitlist(ctx context.Context, opportunityID uuid.UUID) error
+
+	// UpdateHoursInformation updates the hours worked and status for a registration
+	// Called by the hours service when hours are logged or verified
+	UpdateHoursInformation(ctx context.Context, registrationID uuid.UUID, hours float64, hoursStatus string) error
 }
 
 // RegisterVolunteerInput represents the input for registering a volunteer
@@ -404,6 +408,58 @@ func (s *registrationService) PromoteFromWaitlist(ctx context.Context, opportuni
 		}
 
 		s.logger.WithContext(ctx).Info("Volunteer promoted from waitlist")
+	}
+
+	return nil
+}
+
+// UpdateHoursInformation updates the hours worked and status for a registration
+// Called by the hours service when hours are logged or verified
+func (s *registrationService) UpdateHoursInformation(ctx context.Context, registrationID uuid.UUID, hours float64, hoursStatus string) error {
+	// Validate input
+	if registrationID == uuid.Nil {
+		return fmt.Errorf("%w: registration ID is required", ErrInvalidRegistrationData)
+	}
+
+	if hours < 0 {
+		return fmt.Errorf("%w: hours must be non-negative", ErrInvalidRegistrationData)
+	}
+
+	// Get registration to verify it exists
+	registration, err := s.registrationRepo.FindRegistrationByID(ctx, registrationID)
+	if err != nil {
+		return err
+	}
+
+	// Parse hours status
+	var status models.HoursStatus
+	switch hoursStatus {
+	case "pending":
+		status = models.HoursStatusPending
+	case "verified":
+		status = models.HoursStatusVerified
+	case "disputed":
+		status = models.HoursStatusDisputed
+	default:
+		return fmt.Errorf("%w: invalid hours status '%s'", ErrInvalidRegistrationData, hoursStatus)
+	}
+
+	// Log the hours
+	now := time.Now()
+	if err := s.registrationRepo.LogHours(ctx, registrationID, hours, status, now); err != nil {
+		s.logger.WithContext(ctx).WithField("registration_id", registrationID.String()).Error("Failed to log hours")
+		return fmt.Errorf("failed to log hours: %w", err)
+	}
+
+	s.logger.WithContext(ctx).WithFields(map[string]interface{}{
+		"registration_id": registrationID.String(),
+		"hours":           hours,
+		"status":          hoursStatus,
+	}).Info("Hours information updated on registration")
+
+	// Send notification if hours are logged
+	if hoursStatus == "pending" && s.notificationService != nil {
+		_ = s.notificationService.SendRegistrationConfirmation(ctx, registration.VolunteerProfileID, registration.OpportunityID)
 	}
 
 	return nil
