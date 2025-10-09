@@ -10,20 +10,37 @@ import (
 
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/analytics/services"
+	orgrepo "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/repositories"
+	volrepo "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/repositories"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
 )
 
 // AnalyticsHandler exposes HTTP handlers for analytics and reporting
 type AnalyticsHandler struct {
-	service services.AnalyticsService
-	log     *logger.Logger
+	service       services.AnalyticsService
+	orgRepo       orgrepo.OrganizationRepository
+	volunteerRepo volrepo.VolunteerRepository
+	log           *logger.Logger
 }
 
 // NewAnalyticsHandler constructs an AnalyticsHandler with required dependencies
-func NewAnalyticsHandler(service services.AnalyticsService, log *logger.Logger) (*AnalyticsHandler, error) {
+func NewAnalyticsHandler(
+	service services.AnalyticsService,
+	orgRepo orgrepo.OrganizationRepository,
+	volunteerRepo volrepo.VolunteerRepository,
+	log *logger.Logger,
+) (*AnalyticsHandler, error) {
 	if service == nil {
 		return nil, fmt.Errorf("analytics handler requires analytics service")
+	}
+
+	if orgRepo == nil {
+		return nil, fmt.Errorf("analytics handler requires organization repository")
+	}
+
+	if volunteerRepo == nil {
+		return nil, fmt.Errorf("analytics handler requires volunteer repository")
 	}
 
 	if log == nil {
@@ -31,8 +48,10 @@ func NewAnalyticsHandler(service services.AnalyticsService, log *logger.Logger) 
 	}
 
 	return &AnalyticsHandler{
-		service: service,
-		log:     log,
+		service:       service,
+		orgRepo:       orgRepo,
+		volunteerRepo: volunteerRepo,
+		log:           log,
 	}, nil
 }
 
@@ -118,13 +137,35 @@ func (h *AnalyticsHandler) GetVolunteerAnalytics(c *gin.Context) {
 
 	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
 	userUUID := middleware.MustGetUserUUID(c)
+	userRole := middleware.GetUserRole(c)
 
 	ctx := c.Request.Context()
 
-	// TODO: Add authorization check - user should only access their own analytics
-	// or be an admin/coordinator with permission
-	// For now, we'll allow the request to proceed
-	_ = userUUID // Suppress unused variable warning
+	// Authorization check: User should only access their own analytics or be an admin/coordinator
+	// Fetch the volunteer profile to verify ownership
+	volunteerProfile, err := h.volunteerRepo.FindVolunteerProfileByID(ctx, volunteerID)
+	if err != nil {
+		h.log.WithContext(ctx).ErrorWithErr("Failed to fetch volunteer profile for authorization", err)
+		h.respondWithError(c, apperrors.NewNotFoundError("volunteer profile not found"))
+		return
+	}
+
+	// Check if user owns this volunteer profile or is an admin/coordinator
+	isOwner := volunteerProfile.UserID == userUUID
+	isStaff := userRole == middleware.RoleSuperAdmin ||
+		userRole == middleware.RoleOrgAdmin ||
+		userRole == middleware.RoleCoordinator
+
+	if !isOwner && !isStaff {
+		h.log.WithContext(ctx).WithFields(map[string]interface{}{
+			"user_id":       userUUID.String(),
+			"volunteer_id":  volunteerID.String(),
+			"profile_owner": volunteerProfile.UserID.String(),
+		}).Warn("Unauthorized attempt to access volunteer analytics")
+
+		h.respondWithError(c, apperrors.NewForbiddenError("you can only access your own analytics"))
+		return
+	}
 
 	// Get volunteer analytics from service
 	analytics, err := h.service.GetVolunteerAnalytics(ctx, volunteerID, dateRange)
@@ -174,12 +215,31 @@ func (h *AnalyticsHandler) GetOrganizationAnalytics(c *gin.Context) {
 
 	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
 	userUUID := middleware.MustGetUserUUID(c)
+	userRole := middleware.GetUserRole(c)
 
 	ctx := c.Request.Context()
 
-	// TODO: Add authorization check - user should be a member/admin of the organization
-	// For now, we'll allow the request to proceed
-	_ = userUUID // Suppress unused variable warning
+	// Authorization check: User should be a member/admin of the organization or be a super admin
+	// Super admins can access all organization analytics
+	if userRole != middleware.RoleSuperAdmin {
+		// Check if user is a member of this organization
+		isMember, err := h.orgRepo.IsMember(ctx, orgID, userUUID)
+		if err != nil {
+			h.log.WithContext(ctx).ErrorWithErr("Failed to check organization membership", err)
+			h.respondWithError(c, apperrors.NewInternalServerError("failed to verify organization membership"))
+			return
+		}
+
+		if !isMember {
+			h.log.WithContext(ctx).WithFields(map[string]interface{}{
+				"user_id": userUUID.String(),
+				"org_id":  orgID.String(),
+			}).Warn("Unauthorized attempt to access organization analytics")
+
+			h.respondWithError(c, apperrors.NewForbiddenError("you must be a member of the organization to access its analytics"))
+			return
+		}
+	}
 
 	// Get organization analytics from service
 	analytics, err := h.service.GetOrganizationAnalytics(ctx, orgID, dateRange)
@@ -217,23 +277,22 @@ func (h *AnalyticsHandler) GetPlatformAnalytics(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	// Get authenticated user UUID and role from context
 	userUUID := middleware.MustGetUserUUID(c)
-
-	// Check if user has admin role
-	// TODO: Implement proper role-based access control
-	// For now, we'll check for a "is_admin" claim in the context
-	isAdmin, exists := c.Get("is_admin")
-	if !exists || !isAdmin.(bool) {
-		h.log.WithContext(c.Request.Context()).WithFields(map[string]interface{}{
-			"user_id": userUUID.String(),
-		}).Warn("Unauthorized attempt to access platform analytics")
-
-		h.respondWithError(c, apperrors.NewForbiddenError("administrator access required for platform analytics"))
-		return
-	}
+	userRole := middleware.GetUserRole(c)
 
 	ctx := c.Request.Context()
+
+	// Authorization check: Only super admins can access platform-wide analytics
+	if userRole != middleware.RoleSuperAdmin {
+		h.log.WithContext(ctx).WithFields(map[string]interface{}{
+			"user_id":   userUUID.String(),
+			"user_role": userRole,
+		}).Warn("Unauthorized attempt to access platform analytics")
+
+		h.respondWithError(c, apperrors.NewForbiddenError("super administrator access required for platform analytics"))
+		return
+	}
 
 	// Get platform analytics from service
 	analytics, err := h.service.GetPlatformAnalytics(ctx, dateRange)

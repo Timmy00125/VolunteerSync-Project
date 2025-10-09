@@ -70,11 +70,20 @@ type OrganizationRepository interface {
 	DeleteOrganization(ctx context.Context, id uuid.UUID) error
 
 	// AddMember adds a user as a member of an organization with a specific role
-	// This would interact with the Organization_Member table (to be implemented)
-	// AddMember(ctx context.Context, orgID, userID uuid.UUID, role string) error
+	AddMember(ctx context.Context, member *models.OrganizationMember) error
 
-	// RemoveMember removes a user from an organization
-	// RemoveMember(ctx context.Context, orgID, userID uuid.UUID) error
+	// RemoveMember removes a user from an organization (soft delete)
+	RemoveMember(ctx context.Context, orgID, userID uuid.UUID) error
+
+	// FindMemberByOrgAndUser retrieves a membership record by organization and user ID
+	FindMemberByOrgAndUser(ctx context.Context, orgID, userID uuid.UUID) (*models.OrganizationMember, error)
+
+	// IsMember checks if a user is a member of an organization (any role)
+	IsMember(ctx context.Context, orgID, userID uuid.UUID) (bool, error)
+
+	// GetMemberRole retrieves the role of a user in an organization
+	// Returns the role or empty string if not a member
+	GetMemberRole(ctx context.Context, orgID, userID uuid.UUID) (models.OrganizationMemberRole, error)
 
 	// IncrementVolunteerCount increases the total volunteer count for an organization
 	IncrementVolunteerCount(ctx context.Context, orgID uuid.UUID, count int) error
@@ -366,4 +375,139 @@ func (r *gormOrganizationRepository) UpdateAverageRating(ctx context.Context, or
 	}
 
 	return nil
+}
+
+// AddMember adds a user as a member of an organization with a specific role
+func (r *gormOrganizationRepository) AddMember(ctx context.Context, member *models.OrganizationMember) error {
+	if member == nil {
+		return fmt.Errorf("member cannot be nil")
+	}
+
+	if member.OrganizationID == uuid.Nil {
+		return fmt.Errorf("organization ID is required")
+	}
+
+	if member.UserID == uuid.Nil {
+		return fmt.Errorf("user ID is required")
+	}
+
+	// Check if membership already exists
+	var existingMember models.OrganizationMember
+	result := r.db.WithContext(ctx).
+		Where("organization_id = ? AND user_id = ?", member.OrganizationID, member.UserID).
+		First(&existingMember)
+
+	if result.Error == nil {
+		// Membership already exists
+		return fmt.Errorf("user is already a member of this organization")
+	}
+
+	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// Unexpected error during lookup
+		return fmt.Errorf("failed to check existing membership: %w", result.Error)
+	}
+
+	// Create the membership
+	if err := r.db.WithContext(ctx).Create(member).Error; err != nil {
+		return fmt.Errorf("failed to add member: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveMember removes a user from an organization (soft delete)
+func (r *gormOrganizationRepository) RemoveMember(ctx context.Context, orgID, userID uuid.UUID) error {
+	if orgID == uuid.Nil {
+		return fmt.Errorf("organization ID is required")
+	}
+
+	if userID == uuid.Nil {
+		return fmt.Errorf("user ID is required")
+	}
+
+	// Find the membership
+	var member models.OrganizationMember
+	if err := r.db.WithContext(ctx).
+		Where("organization_id = ? AND user_id = ?", orgID, userID).
+		First(&member).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("membership not found")
+		}
+		return fmt.Errorf("failed to find membership: %w", err)
+	}
+
+	// Soft delete the membership
+	result := r.db.WithContext(ctx).Delete(&member)
+	if result.Error != nil {
+		return fmt.Errorf("failed to remove member: %w", result.Error)
+	}
+
+	return nil
+}
+
+// FindMemberByOrgAndUser retrieves a membership record by organization and user ID
+func (r *gormOrganizationRepository) FindMemberByOrgAndUser(ctx context.Context, orgID, userID uuid.UUID) (*models.OrganizationMember, error) {
+	if orgID == uuid.Nil {
+		return nil, fmt.Errorf("organization ID is required")
+	}
+
+	if userID == uuid.Nil {
+		return nil, fmt.Errorf("user ID is required")
+	}
+
+	var member models.OrganizationMember
+	result := r.db.WithContext(ctx).
+		Where("organization_id = ? AND user_id = ?", orgID, userID).
+		First(&member)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("membership not found")
+		}
+		return nil, fmt.Errorf("failed to find membership: %w", result.Error)
+	}
+
+	return &member, nil
+}
+
+// IsMember checks if a user is a member of an organization (any role)
+func (r *gormOrganizationRepository) IsMember(ctx context.Context, orgID, userID uuid.UUID) (bool, error) {
+	if orgID == uuid.Nil || userID == uuid.Nil {
+		return false, nil
+	}
+
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.OrganizationMember{}).
+		Where("organization_id = ? AND user_id = ?", orgID, userID).
+		Count(&count).Error
+
+	if err != nil {
+		return false, fmt.Errorf("failed to check membership: %w", err)
+	}
+
+	return count > 0, nil
+}
+
+// GetMemberRole retrieves the role of a user in an organization
+// Returns the role or empty string if not a member
+func (r *gormOrganizationRepository) GetMemberRole(ctx context.Context, orgID, userID uuid.UUID) (models.OrganizationMemberRole, error) {
+	if orgID == uuid.Nil || userID == uuid.Nil {
+		return "", nil
+	}
+
+	var member models.OrganizationMember
+	result := r.db.WithContext(ctx).
+		Select("role").
+		Where("organization_id = ? AND user_id = ?", orgID, userID).
+		First(&member)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return "", nil // Not a member
+		}
+		return "", fmt.Errorf("failed to get member role: %w", result.Error)
+	}
+
+	return member.Role, nil
 }

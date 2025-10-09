@@ -187,3 +187,64 @@ func (o *Organization) IncrementHours(hours float64) {
 func (o *Organization) UpdateRating(rating float64) {
 	o.AvgRating = &rating
 }
+
+// OrganizationMemberRole represents the role of a member in an organization
+type OrganizationMemberRole string
+
+const (
+	// OrgRoleAdmin represents an organization administrator
+	OrgRoleAdmin OrganizationMemberRole = "admin"
+	// OrgRoleCoordinator represents an organization coordinator
+	OrgRoleCoordinator OrganizationMemberRole = "coordinator"
+)
+
+// OrganizationMember represents a user's membership in an organization with a specific role
+// Members can be administrators (full control) or coordinators (event management)
+type OrganizationMember struct {
+	ID             uuid.UUID              `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	OrganizationID uuid.UUID              `gorm:"type:uuid;not null;index:idx_org_members_org_user,priority:1" json:"organization_id"`
+	UserID         uuid.UUID              `gorm:"type:uuid;not null;index:idx_org_members_org_user,priority:2;index:idx_org_members_user" json:"user_id"`
+	Role           OrganizationMemberRole `gorm:"type:varchar(20);not null" json:"role"`
+	InvitedBy      *uuid.UUID             `gorm:"type:uuid" json:"invited_by,omitempty"`
+	InvitedAt      *time.Time             `gorm:"type:timestamp" json:"invited_at,omitempty"`
+	JoinedAt       time.Time              `gorm:"not null;default:CURRENT_TIMESTAMP" json:"joined_at"`
+	CreatedAt      time.Time              `gorm:"not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt      time.Time              `gorm:"not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt         `gorm:"index" json:"-"` // Soft delete support
+
+	// Associations
+	Organization *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+}
+
+// TableName specifies the table name for the OrganizationMember model
+func (OrganizationMember) TableName() string {
+	return "organization_members"
+}
+
+// BeforeCreate hook to generate UUID if not provided
+func (om *OrganizationMember) BeforeCreate(tx *gorm.DB) error {
+	if om.ID == uuid.Nil {
+		om.ID = uuid.New()
+	}
+	return nil
+}
+
+// IsAdmin returns true if the member is an administrator
+func (om *OrganizationMember) IsAdmin() bool {
+	return om.Role == OrgRoleAdmin
+}
+
+// IsCoordinator returns true if the member is a coordinator
+func (om *OrganizationMember) IsCoordinator() bool {
+	return om.Role == OrgRoleCoordinator
+}
+
+// HasAdminPrivileges returns true if the member has admin-level privileges
+func (om *OrganizationMember) HasAdminPrivileges() bool {
+	return om.IsAdmin()
+}
+
+// CanManageEvents returns true if the member can manage events (both admin and coordinator can)
+func (om *OrganizationMember) CanManageEvents() bool {
+	return om.IsAdmin() || om.IsCoordinator()
+}
