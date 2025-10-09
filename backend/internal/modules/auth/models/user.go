@@ -56,12 +56,12 @@ type User struct {
 	AccountStatus       AccountStatus  `gorm:"type:varchar(20);not null;default:'active'" json:"account_status"`
 	LastLoginAt         *time.Time     `gorm:"type:timestamp" json:"last_login_at,omitempty"`
 	EmailVerified       bool           `gorm:"not null;default:false" json:"email_verified"`
-	SecurityQuestion1   string         `gorm:"type:varchar(255);not null" json:"-"` // Never expose in JSON
-	SecurityAnswer1Hash string         `gorm:"type:varchar(255);not null" json:"-"` // Never expose in JSON
-	SecurityQuestion2   string         `gorm:"type:varchar(255);not null" json:"-"` // Never expose in JSON
-	SecurityAnswer2Hash string         `gorm:"type:varchar(255);not null" json:"-"` // Never expose in JSON
-	SecurityQuestion3   string         `gorm:"type:varchar(255);not null" json:"-"` // Never expose in JSON
-	SecurityAnswer3Hash string         `gorm:"type:varchar(255);not null" json:"-"` // Never expose in JSON
+	SecurityQuestion1   string         `gorm:"column:security_question_1;type:varchar(255);not null" json:"-"`    // Never expose in JSON
+	SecurityAnswer1Hash string         `gorm:"column:security_answer_1_hash;type:varchar(255);not null" json:"-"` // Never expose in JSON
+	SecurityQuestion2   string         `gorm:"column:security_question_2;type:varchar(255);not null" json:"-"`    // Never expose in JSON
+	SecurityAnswer2Hash string         `gorm:"column:security_answer_2_hash;type:varchar(255);not null" json:"-"` // Never expose in JSON
+	SecurityQuestion3   string         `gorm:"column:security_question_3;type:varchar(255);not null" json:"-"`    // Never expose in JSON
+	SecurityAnswer3Hash string         `gorm:"column:security_answer_3_hash;type:varchar(255);not null" json:"-"` // Never expose in JSON
 	CreatedAt           time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt           time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"` // Soft delete support
