@@ -12,7 +12,7 @@
  * - Consistent error handling
  */
 
-import type { ApiError, AuthTokens } from './types';
+import type { ApiError, AuthTokens, DashboardResponse } from './types';
 
 // ============================================================================
 // Configuration
@@ -381,6 +381,18 @@ export async function logout(): Promise<void> {
 }
 
 // ============================================================================
+// Volunteer API Methods
+// ============================================================================
+
+/**
+ * Get volunteer dashboard data
+ */
+export async function getVolunteerDashboard(): Promise<DashboardResponse> {
+  const response = await get<{ data: DashboardResponse }>('/volunteers/me/dashboard');
+  return response.data;
+}
+
+// ============================================================================
 // Default Export
 // ============================================================================
 
@@ -395,4 +407,5 @@ export default {
   clearTokens,
   isAuthenticated,
   logout,
+  getVolunteerDashboard,
 };

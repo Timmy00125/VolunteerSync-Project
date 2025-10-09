@@ -159,6 +159,39 @@ export interface VolunteerDashboard {
   }>;
 }
 
+// Enhanced Dashboard types matching backend API response
+export interface DashboardResponse {
+  profile: VolunteerProfile;
+  total_hours: number;
+  total_events: number;
+  total_organizations: number;
+  recent_events: RecentEvent[];
+  upcoming_events: UpcomingEvent[];
+  achievements: Achievement[];
+  hours_this_month: number;
+  events_this_month: number;
+}
+
+export interface RecentEvent {
+  id: string;
+  opportunity_title: string;
+  organization_name: string;
+  date: string;
+  hours_logged: number;
+  status: string;
+}
+
+export interface UpcomingEvent {
+  id: string;
+  opportunity_title: string;
+  organization_name: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  status: string;
+}
+
 // ============================================================================
 // Opportunity Types
 // ============================================================================

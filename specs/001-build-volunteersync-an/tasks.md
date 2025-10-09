@@ -760,7 +760,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend - Volunteer Features
 
-- [ ] T109 [P] Volunteer dashboard page in `frontend/src/app/(dashboard)/volunteer/page.tsx`
+- [x] T109 [P] Volunteer dashboard page in `frontend/src/app/(dashboard)/volunteer/page.tsx`
 
   - Impact metrics cards (total hours, events, organizations)
   - Hours over time chart (Chart.js)

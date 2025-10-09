@@ -268,6 +268,7 @@ export const queryKeys = {
     details: () => [...queryKeys.volunteers.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.volunteers.details(), id] as const,
     profile: (id: string) => [...queryKeys.volunteers.detail(id), 'profile'] as const,
+    dashboard: () => [...queryKeys.volunteers.all, 'dashboard'] as const,
   },
 
   // Registrations
