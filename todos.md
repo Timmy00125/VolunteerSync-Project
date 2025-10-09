@@ -22,11 +22,11 @@ This document tracks all TODO items, both from the task list and inline code com
 
 ### 1. Authorization & Security
 
-**Status**: ⚠️ Partially Complete  
+**Status**: ✅ **COMPLETE**  
 **Priority**: HIGH  
 **Impact**: Security vulnerabilities, unauthorized access
 
-**Progress**: 6 of 7 items complete (analytics authorization ✅, achievements authorization ✅, RBAC middleware ✅)
+**Progress**: 7 of 7 items complete (all authorization checks implemented ✅)
 
 #### Backend Issues:
 
@@ -71,11 +71,17 @@ This document tracks all TODO items, both from the task list and inline code com
      - Backward compatible: passes `nil` for checker to defer to handler level
      - **Usage**: `middleware.RequireOrgMembership("org_id", orgRepo)` in route groups
 
-4. **Organizations Service Authorization**
+4. **Organizations Service Authorization** ✅ **COMPLETE**
    - File: `backend/internal/modules/organizations/services/org_service.go`
-   - Line 216: Create organization member record for creator as admin
-   - Line 295: Verify user is admin before allowing organization updates
-   - Line 431: Verify user is admin before allowing organization deletion
+   - ✅ Line 216: Create organization member record for creator as admin
+   - ✅ Line 295: Verify user is admin before allowing organization updates
+   - ✅ Line 431: Verify user is admin before allowing organization deletion
+   - **Implementation Details**:
+     - CreateOrganization: Automatically creates `OrganizationMember` record with `OrgRoleAdmin` for creator
+     - UpdateOrganization: Validates user has `OrgRoleAdmin` role via `GetMemberRole` before allowing updates
+     - DeleteOrganization: Validates user has `OrgRoleAdmin` role via `GetMemberRole` before allowing deletion
+     - Proper error logging for authorization failures
+     - Returns `ForbiddenError` when user lacks admin privileges
 
 **Action Items**:
 
@@ -84,8 +90,8 @@ This document tracks all TODO items, both from the task list and inline code com
 - [x] Update RBAC middleware to perform actual DB lookups
 - [x] Add proper authorization checks to all analytics handlers
 - [x] Add proper authorization checks to achievement handlers
-- [ ] Create organization member records on org creation
-- [ ] Add authorization checks before org updates/deletes
+- [x] Create organization member records on org creation
+- [x] Add authorization checks before org updates/deletes
 
 ---
 
@@ -353,9 +359,9 @@ Frontend: 0/33 tasks completed ❌
 | `volunteers/services/volunteer_service.go`      | 411  | Fetch real dashboard data                    | MEDIUM   | ❌          |
 | `volunteers/services/volunteer_service.go`      | 449  | Fetch real analytics data                    | MEDIUM   | ❌          |
 | `volunteers/services/volunteer_service.go`      | 489  | Implement PDF generation                     | MEDIUM   | ❌          |
-| `organizations/services/org_service.go`         | 216  | Create org member record for creator         | HIGH     | ❌          |
-| `organizations/services/org_service.go`         | 295  | Verify user is admin before update           | HIGH     | ❌          |
-| `organizations/services/org_service.go`         | 431  | Verify user is admin before delete           | HIGH     | ❌          |
+| `organizations/services/org_service.go`         | 216  | Create org member record for creator         | HIGH     | ✅ COMPLETE |
+| `organizations/services/org_service.go`         | 295  | Verify user is admin before update           | HIGH     | ✅ COMPLETE |
+| `organizations/services/org_service.go`         | 431  | Verify user is admin before delete           | HIGH     | ✅ COMPLETE |
 | `tests/integration/helpers/test_helpers.go`     | 31   | Initialize testcontainers                    | HIGH     | ❌          |
 | `tests/integration/helpers/test_helpers.go`     | 44   | Initialize HTTP server with Gin              | HIGH     | ❌          |
 

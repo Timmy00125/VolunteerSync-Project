@@ -213,8 +213,30 @@ func (s *organizationService) CreateOrganization(
 		return nil, apperrors.NewInternalServerError("Failed to create organization")
 	}
 
-	// TODO: Create organization member record for the creator as admin
-	// This will be implemented when the Organization_Member module is ready
+	// Create organization member record for the creator as admin (FR-014)
+	now := time.Now()
+	member := &models.OrganizationMember{
+		OrganizationID: org.ID,
+		UserID:         creatorUserID,
+		Role:           models.OrgRoleAdmin,
+		JoinedAt:       now,
+	}
+
+	if err := s.repo.AddMember(ctx, member); err != nil {
+		// Log the error but don't fail the organization creation
+		// The organization admin can manually add the creator later
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":          org.ID,
+			"creator_user_id": creatorUserID,
+			"error":           err.Error(),
+		}).Error("Failed to create organization member record for creator")
+	} else {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":          org.ID,
+			"creator_user_id": creatorUserID,
+			"role":            models.OrgRoleAdmin,
+		}).Info("Organization creator added as admin")
+	}
 
 	s.logger.WithFields(map[string]interface{}{
 		"org_id":          org.ID,
@@ -292,9 +314,28 @@ func (s *organizationService) UpdateOrganization(
 		return nil, apperrors.NewInternalServerError("Failed to retrieve organization")
 	}
 
-	// TODO: Verify that the user is an admin of this organization
-	// This will be implemented when the Organization_Member module is ready
-	// For now, we'll allow the update (this should be enforced by middleware in production)
+	// Verify that the user is an admin of this organization
+	// Super admins (if they exist in the user system) should also be allowed
+	// We check the user role from context in the handler/middleware layer
+	role, err := s.repo.GetMemberRole(ctx, orgID, userID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID,
+			"user_id": userID,
+			"error":   err.Error(),
+		}).Error("Failed to get user role in organization")
+		return nil, apperrors.NewInternalServerError("Failed to verify permissions")
+	}
+
+	// Only organization admins can update organization details
+	if role != models.OrgRoleAdmin {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID,
+			"user_id": userID,
+			"role":    role,
+		}).Warn("User attempted to update organization without admin privileges")
+		return nil, apperrors.NewForbiddenError("Only organization administrators can update organization details")
+	}
 
 	// Apply updates (only update fields that are provided)
 	addressChanged := false
@@ -428,8 +469,27 @@ func (s *organizationService) DeleteOrganization(
 		return apperrors.NewValidationError("Invalid user ID", nil)
 	}
 
-	// TODO: Verify that the user is an admin of this organization
-	// This will be implemented when the Organization_Member module is ready
+	// Verify that the user is an admin of this organization
+	// Only organization admins can delete organizations
+	role, err := s.repo.GetMemberRole(ctx, orgID, userID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID,
+			"user_id": userID,
+			"error":   err.Error(),
+		}).Error("Failed to get user role in organization")
+		return apperrors.NewInternalServerError("Failed to verify permissions")
+	}
+
+	// Only organization admins can delete organizations
+	if role != models.OrgRoleAdmin {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID,
+			"user_id": userID,
+			"role":    role,
+		}).Warn("User attempted to delete organization without admin privileges")
+		return apperrors.NewForbiddenError("Only organization administrators can delete organizations")
+	}
 
 	// Delete organization
 	if err := s.repo.DeleteOrganization(ctx, orgID); err != nil {
