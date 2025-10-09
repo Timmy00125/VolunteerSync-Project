@@ -596,14 +596,14 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Analytics Module
 
-- [ ] T083 [P] Analytics service in `backend/internal/modules/analytics/services/analytics_service.go`
+- [x] T083 [P] Analytics service in `backend/internal/modules/analytics/services/analytics_service.go`
 
   - GetVolunteerAnalytics (hours over time, events by cause)
   - GetOrganizationAnalytics (volunteers recruited, hours contributed, retention rate)
   - GetPlatformAnalytics (total volunteers, orgs, hours, growth trends)
   - GenerateReport (PDF generation)
 
-- [ ] T084 Analytics handlers in `backend/internal/modules/analytics/handlers/analytics_handlers.go`
+- [x] T084 Analytics handlers in `backend/internal/modules/analytics/handlers/analytics_handlers.go`
   - GET /analytics/volunteer/{id} handler
   - GET /analytics/organization/{id} handler
   - GET /analytics/platform handler (admin only)
