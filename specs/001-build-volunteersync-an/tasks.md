@@ -698,7 +698,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Default cache times
   - Error handling
 
-- [ ] T099 [P] Zustand stores in `frontend/src/store/`
+- [x] T099 [P] Zustand stores in `frontend/src/store/`
 
   - Auth store (user, tokens, login, logout)
   - Notification store (unread count, notifications list)
