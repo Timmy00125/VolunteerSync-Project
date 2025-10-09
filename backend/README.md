@@ -44,9 +44,56 @@ backend/
 ### Prerequisites
 
 - Go 1.25+
-- PostgreSQL 16+
-- Redis
 - Docker & Docker Compose (for local development)
+
+### Local Development (Recommended)
+
+The easiest way to develop is to run PostgreSQL and Redis in Docker, and the backend on your host machine:
+
+```bash
+# 1. Start database services (PostgreSQL on port 5433, Redis on port 6380)
+make dev-up
+
+# 2. Run the backend (automatically connects to Docker services via .env.local)
+make run-local
+```
+
+The backend will be available at `http://localhost:8080`.
+
+**Why this approach?**
+
+- Fast hot-reload with Go's native compilation
+- Direct access to logs and debugger
+- No container rebuilds needed
+- Database persists across restarts
+
+### Available Make Commands
+
+```bash
+make help              # Show all available commands
+make run-local         # Run backend locally (connects to Docker services)
+make dev-up            # Start Docker services (postgres, redis)
+make dev-down          # Stop Docker services
+make dev-logs          # Show Docker service logs
+make build             # Build the backend binary
+make test              # Run all tests
+make test-integration  # Run integration tests only
+make test-contract     # Run contract tests only
+make lint              # Run linter
+make fmt               # Format code
+make clean             # Clean build artifacts
+```
+
+### Alternative: Full Docker Stack
+
+To run everything in Docker (backend, frontend, databases):
+
+```bash
+cd ../docker
+docker compose up
+```
+
+See `../docker/LOCAL_DEVELOPMENT.md` for detailed port mappings and connection info.
 
 ### Installation
 

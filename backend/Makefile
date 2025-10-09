@@ -1,4 +1,4 @@
-.PHONY: help build run test test-integration test-contract coverage lint fmt clean install-tools
+.PHONY: help build run run-local dev-up dev-down dev-logs test test-integration test-contract coverage lint fmt clean install-tools
 
 # Default target
 .DEFAULT_GOAL := help
@@ -18,9 +18,35 @@ build: ## Build the application
 	go build -o bin/api cmd/api/main.go
 	@echo "$(GREEN)✓ Build successful$(NC)"
 
-run: ## Run the application
+run: ## Run the application (uses system environment)
 	@echo "$(YELLOW)Starting server...$(NC)"
 	go run cmd/api/main.go
+
+run-local: ## Run locally with .env.local (connects to Docker services)
+	@echo "$(YELLOW)Starting server with local environment...$(NC)"
+	@if [ ! -f .env.local ]; then \
+		echo "$(RED)✗ .env.local not found$(NC)"; \
+		echo "$(YELLOW)Creating .env.local from defaults...$(NC)"; \
+		echo "Please ensure Docker services are running: cd ../docker && docker compose up -d postgres redis$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Loading .env.local and connecting to Docker services...$(NC)"
+	set -a && . ./.env.local && set +a && go run cmd/api/main.go
+
+dev-up: ## Start Docker services (postgres, redis) for local development
+	@echo "$(YELLOW)Starting Docker services...$(NC)"
+	cd ../docker && docker compose up -d postgres redis
+	@echo "$(GREEN)✓ PostgreSQL available at localhost:5433$(NC)"
+	@echo "$(GREEN)✓ Redis available at localhost:6380$(NC)"
+	@echo "$(YELLOW)Run 'make run-local' to start the backend$(NC)"
+
+dev-down: ## Stop Docker services
+	@echo "$(YELLOW)Stopping Docker services...$(NC)"
+	cd ../docker && docker compose down
+	@echo "$(GREEN)✓ Services stopped$(NC)"
+
+dev-logs: ## Show logs from Docker services
+	cd ../docker && docker compose logs -f postgres redis
 
 test: ## Run all tests
 	@echo "$(YELLOW)Running tests...$(NC)"

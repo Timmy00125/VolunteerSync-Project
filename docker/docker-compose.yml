@@ -128,6 +128,7 @@ services:
       NEXT_TELEMETRY_DISABLED: 1
 
       # API Configuration
+      # Note: Uses localhost because NEXT_PUBLIC vars are for browser, not server
       NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
       NEXT_PUBLIC_APP_URL: http://localhost:3000
 
