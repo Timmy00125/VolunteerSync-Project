@@ -447,7 +447,7 @@ func TestGetTokenID(t *testing.T) {
 		token, err := manager.GenerateAccessToken("user123", "volunteer")
 		require.NoError(t, err)
 
-		tokenID, err := manager.GetTokenID(token)
+		tokenID, err := manager.GetTokenID(token, manager.config.AccessSecret)
 		require.NoError(t, err)
 		assert.NotEmpty(t, tokenID)
 
@@ -458,7 +458,7 @@ func TestGetTokenID(t *testing.T) {
 	})
 
 	t.Run("get token ID from malformed token", func(t *testing.T) {
-		tokenID, err := manager.GetTokenID("invalid-token")
+		tokenID, err := manager.GetTokenID("invalid-token", manager.config.AccessSecret)
 		assert.Error(t, err)
 		assert.Empty(t, tokenID)
 	})
