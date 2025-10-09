@@ -391,7 +391,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*j
 		return nil, apperrors.NewBadRequestError("refresh token is required")
 	}
 
-	tokenID, err := s.jwtManager.GetTokenID(refreshToken, s.jwtConfig.RefreshTokenSecret)
+	tokenID, err := s.jwtManager.GetTokenID(refreshToken)
 	if err != nil {
 		return nil, apperrors.NewUnauthorizedError("invalid refresh token")
 	}
@@ -435,7 +435,7 @@ func (s *authService) Logout(ctx context.Context, refreshToken string) error {
 		return apperrors.NewBadRequestError("refresh token is required")
 	}
 
-	tokenID, err := s.jwtManager.GetTokenID(refreshToken, s.jwtConfig.RefreshTokenSecret)
+	tokenID, err := s.jwtManager.GetTokenID(refreshToken)
 	if err != nil {
 		return apperrors.NewUnauthorizedError("invalid refresh token")
 	}

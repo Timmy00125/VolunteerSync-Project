@@ -266,9 +266,9 @@ func (m *Manager) RefreshTokenPair(refreshTokenString, userRole string) (*TokenP
 	return tokenPair, oldTokenID, nil
 }
 
-// GetTokenID extracts the token ID (jti claim) from a token with full validation
-func (m *Manager) GetTokenID(tokenString string, secret string) (string, error) {
-	claims, err := m.validateToken(tokenString, secret, RefreshTokenType)
+// GetTokenID extracts the token ID (jti claim) from a refresh token with full validation
+func (m *Manager) GetTokenID(tokenString string) (string, error) {
+	claims, err := m.validateToken(tokenString, m.config.RefreshSecret, RefreshTokenType)
 	if err != nil {
 		return "", err
 	}

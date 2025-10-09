@@ -443,22 +443,22 @@ func TestGetTokenID(t *testing.T) {
 		Issuer:             "test",
 	})
 
-	t.Run("get token ID from valid token", func(t *testing.T) {
-		token, err := manager.GenerateAccessToken("user123", "volunteer")
+	t.Run("get token ID from valid refresh token", func(t *testing.T) {
+		token, err := manager.GenerateRefreshToken("user123")
 		require.NoError(t, err)
 
-		tokenID, err := manager.GetTokenID(token, manager.config.AccessSecret)
+		tokenID, err := manager.GetTokenID(token)
 		require.NoError(t, err)
 		assert.NotEmpty(t, tokenID)
 
 		// Verify it matches the ID from validation
-		claims, err := manager.ValidateAccessToken(token)
+		claims, err := manager.ValidateRefreshToken(token)
 		require.NoError(t, err)
 		assert.Equal(t, claims.ID, tokenID)
 	})
 
 	t.Run("get token ID from malformed token", func(t *testing.T) {
-		tokenID, err := manager.GetTokenID("invalid-token", manager.config.AccessSecret)
+		tokenID, err := manager.GetTokenID("invalid-token")
 		assert.Error(t, err)
 		assert.Empty(t, tokenID)
 	})
