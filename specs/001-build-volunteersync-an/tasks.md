@@ -733,7 +733,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Link to password reset
   - API call to POST /auth/login
 
-- [ ] T105 [P] Password reset pages in `frontend/src/app/(auth)/reset-password/`
+- [x] T105 [P] Password reset pages in `frontend/src/app/(auth)/reset-password/`
   - Request page (enter email)
   - Verify page (answer security questions)
   - Confirm page (set new password)
