@@ -210,11 +210,8 @@ func main() {
 	)
 
 	// Volunteer service (geocoding service is optional, passing nil)
-	volunteerService := volunteerServices.NewVolunteerService(
-		volunteerRepo,
-		nil, // geocoding service - can be added later
-		log,
-	)
+	// Note: Cross-module dependencies will be added later via adapters
+	var volunteerService volunteerServices.VolunteerService
 
 	// Opportunity service (notification service is optional for now, passing nil)
 	// Geocoding service is also optional
@@ -280,6 +277,21 @@ func main() {
 	achievementService := achievementServices.NewAchievementService(
 		achievementRepo,
 		commServiceAdapter,
+		log,
+	)
+
+	// Now create adapters for volunteer service
+	regServiceAdapter := volunteerServices.NewRegistrationServiceAdapter(regService, oppService, orgService)
+	hoursServiceAdapter := volunteerServices.NewHoursServiceAdapter(hoursService)
+	achievementServiceAdapter := volunteerServices.NewAchievementServiceAdapter(achievementService)
+
+	// Finally create volunteer service with all dependencies
+	volunteerService = volunteerServices.NewVolunteerService(
+		volunteerRepo,
+		nil,                       // geocoding service - can be added later
+		regServiceAdapter,         // registration service adapter - NOW WIRED
+		hoursServiceAdapter,       // hours service adapter - NOW WIRED
+		achievementServiceAdapter, // achievement service adapter - NOW WIRED
 		log,
 	)
 

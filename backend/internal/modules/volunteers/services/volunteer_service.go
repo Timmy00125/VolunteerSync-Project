@@ -32,6 +32,80 @@ type GeocodingService interface {
 	GeocodeAddress(ctx context.Context, address string) (lat, lng float64, err error)
 }
 
+// RegistrationServiceAdapter defines the minimal interface needed from registrations module
+// This adapter pattern avoids circular dependencies between modules
+type RegistrationServiceAdapter interface {
+	// ListVolunteerRegistrations returns all registrations for a volunteer with filters
+	ListVolunteerRegistrations(ctx context.Context, volunteerProfileID uuid.UUID, filters RegistrationFilters) ([]*RegistrationInfo, error)
+}
+
+// RegistrationFilters represents filters for listing registrations
+type RegistrationFilters struct {
+	Status    *string
+	StartDate *time.Time
+	EndDate   *time.Time
+	Limit     int
+	Offset    int
+}
+
+// RegistrationInfo contains registration details needed for dashboard/analytics
+type RegistrationInfo struct {
+	ID               uuid.UUID
+	OpportunityID    uuid.UUID
+	OpportunityTitle string
+	OrganizationID   uuid.UUID
+	OrganizationName string
+	Status           string
+	Date             time.Time
+	StartTime        time.Time
+	EndTime          time.Time
+	Location         string
+	CauseCategory    string
+	RegisteredAt     time.Time
+	CheckedInAt      *time.Time
+	HoursWorked      *float64
+	HoursStatus      *string
+	HoursLoggedAt    *time.Time
+	HoursVerifiedAt  *time.Time
+}
+
+// HoursServiceAdapter defines the minimal interface needed from hours module
+type HoursServiceAdapter interface {
+	// GetHoursLogsByVolunteer returns all hours logs for a volunteer
+	GetHoursLogsByVolunteer(ctx context.Context, volunteerProfileID uuid.UUID) ([]*HoursLogInfo, error)
+	// GetPendingHoursForVolunteer returns pending hours logs awaiting verification
+	GetPendingHoursForVolunteer(ctx context.Context, volunteerProfileID uuid.UUID) ([]*HoursLogInfo, error)
+}
+
+// HoursLogInfo contains hours log details needed for dashboard/analytics
+type HoursLogInfo struct {
+	ID               uuid.UUID
+	RegistrationID   uuid.UUID
+	Hours            float64
+	Status           string
+	LoggedAt         time.Time
+	VerifiedAt       *time.Time
+	CoordinatorNotes *string
+	VolunteerNotes   *string
+}
+
+// AchievementServiceAdapter defines the minimal interface needed from achievements module
+type AchievementServiceAdapter interface {
+	// GetVolunteerAchievements returns all achievements earned by a volunteer
+	GetVolunteerAchievements(ctx context.Context, volunteerProfileID uuid.UUID) ([]*AchievementInfo, error)
+	// CountVolunteerAchievements returns total count of achievements earned
+	CountVolunteerAchievements(ctx context.Context, volunteerProfileID uuid.UUID) (int64, error)
+}
+
+// AchievementInfo contains achievement details needed for dashboard
+type AchievementInfo struct {
+	ID          uuid.UUID
+	Name        string
+	Description string
+	IconURL     *string
+	EarnedAt    time.Time
+}
+
 // VolunteerService encapsulates volunteer profile business logic
 // Provides methods for profile management, dashboard metrics, analytics, and impact reporting
 type VolunteerService interface {
@@ -166,22 +240,30 @@ type OrganizationStat struct {
 
 // volunteerService is the concrete implementation of VolunteerService
 type volunteerService struct {
-	repo             repositories.VolunteerRepository
-	geocodingService GeocodingService // Optional, can be nil
-	logger           *logger.Logger
-	// TODO: Add dependencies for fetching registrations, hours, achievements when those modules are ready
+	repo                repositories.VolunteerRepository
+	geocodingService    GeocodingService // Optional, can be nil
+	registrationService RegistrationServiceAdapter
+	hoursService        HoursServiceAdapter
+	achievementService  AchievementServiceAdapter
+	logger              *logger.Logger
 }
 
 // NewVolunteerService creates a new instance of VolunteerService
 func NewVolunteerService(
 	repo repositories.VolunteerRepository,
 	geocodingService GeocodingService,
+	registrationService RegistrationServiceAdapter,
+	hoursService HoursServiceAdapter,
+	achievementService AchievementServiceAdapter,
 	logger *logger.Logger,
 ) VolunteerService {
 	return &volunteerService{
-		repo:             repo,
-		geocodingService: geocodingService,
-		logger:           logger,
+		repo:                repo,
+		geocodingService:    geocodingService,
+		registrationService: registrationService,
+		hoursService:        hoursService,
+		achievementService:  achievementService,
+		logger:              logger,
 	}
 }
 
@@ -409,18 +491,147 @@ func (s *volunteerService) GetDashboard(ctx context.Context, userID uuid.UUID) (
 		return nil, fmt.Errorf("failed to find volunteer profile: %w", err)
 	}
 
-	// TODO: Fetch registrations, hours, achievements from respective modules when available
-	// For now, return basic profile data with placeholder values
+	// Initialize dashboard response
 	dashboard := &DashboardResponse{
 		Profile:            profile,
 		TotalHours:         profile.TotalHours,
 		TotalEvents:        profile.TotalEvents,
-		TotalOrganizations: 0, // Will be calculated from registrations
+		TotalOrganizations: 0,
 		RecentEvents:       []RecentEvent{},
 		UpcomingEvents:     []UpcomingEvent{},
 		Achievements:       []Achievement{},
-		HoursThisMonth:     0, // Will be calculated from hours logs
-		EventsThisMonth:    0, // Will be calculated from registrations
+		HoursThisMonth:     0,
+		EventsThisMonth:    0,
+	}
+
+	// Fetch all registrations for the volunteer
+	if s.registrationService != nil {
+		registrations, err := s.registrationService.ListVolunteerRegistrations(ctx, profile.ID, RegistrationFilters{
+			Limit: 1000, // Get all registrations
+		})
+		if err != nil {
+			s.logger.WithFields(map[string]interface{}{
+				"error":      err.Error(),
+				"profile_id": profile.ID.String(),
+			}).Warn("Failed to fetch registrations for dashboard")
+			// Continue with partial data
+		} else {
+			// Calculate total organizations (unique organizations)
+			orgMap := make(map[uuid.UUID]bool)
+			now := time.Now()
+			currentMonthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+			for _, reg := range registrations {
+				orgMap[reg.OrganizationID] = true
+
+				// Count events this month
+				if reg.Date.After(currentMonthStart) || reg.Date.Equal(currentMonthStart) {
+					dashboard.EventsThisMonth++
+				}
+
+				// Build recent events (completed, last 5)
+				if reg.Status == "completed" && reg.Date.Before(now) {
+					dashboard.RecentEvents = append(dashboard.RecentEvents, RecentEvent{
+						ID:               reg.ID,
+						OpportunityTitle: reg.OpportunityTitle,
+						OrganizationName: reg.OrganizationName,
+						Date:             reg.Date,
+						HoursLogged:      getFloatValue(reg.HoursWorked),
+						Status:           getStringValue(reg.HoursStatus),
+					})
+				}
+
+				// Build upcoming events (confirmed, future, next 5)
+				if reg.Status == "confirmed" && reg.Date.After(now) {
+					dashboard.UpcomingEvents = append(dashboard.UpcomingEvents, UpcomingEvent{
+						ID:               reg.ID,
+						OpportunityTitle: reg.OpportunityTitle,
+						OrganizationName: reg.OrganizationName,
+						Date:             reg.Date,
+						StartTime:        reg.StartTime,
+						EndTime:          reg.EndTime,
+						Location:         reg.Location,
+						Status:           reg.Status,
+					})
+				}
+			}
+
+			dashboard.TotalOrganizations = len(orgMap)
+
+			// Sort and limit recent events (most recent first)
+			if len(dashboard.RecentEvents) > 1 {
+				// Sort by date descending
+				for i := 0; i < len(dashboard.RecentEvents)-1; i++ {
+					for j := i + 1; j < len(dashboard.RecentEvents); j++ {
+						if dashboard.RecentEvents[i].Date.Before(dashboard.RecentEvents[j].Date) {
+							dashboard.RecentEvents[i], dashboard.RecentEvents[j] = dashboard.RecentEvents[j], dashboard.RecentEvents[i]
+						}
+					}
+				}
+			}
+			if len(dashboard.RecentEvents) > 5 {
+				dashboard.RecentEvents = dashboard.RecentEvents[:5]
+			}
+
+			// Sort and limit upcoming events (soonest first)
+			if len(dashboard.UpcomingEvents) > 1 {
+				// Sort by date ascending
+				for i := 0; i < len(dashboard.UpcomingEvents)-1; i++ {
+					for j := i + 1; j < len(dashboard.UpcomingEvents); j++ {
+						if dashboard.UpcomingEvents[i].Date.After(dashboard.UpcomingEvents[j].Date) {
+							dashboard.UpcomingEvents[i], dashboard.UpcomingEvents[j] = dashboard.UpcomingEvents[j], dashboard.UpcomingEvents[i]
+						}
+					}
+				}
+			}
+			if len(dashboard.UpcomingEvents) > 5 {
+				dashboard.UpcomingEvents = dashboard.UpcomingEvents[:5]
+			}
+		}
+	}
+
+	// Fetch hours logs to calculate hours this month
+	if s.hoursService != nil {
+		hoursLogs, err := s.hoursService.GetHoursLogsByVolunteer(ctx, profile.ID)
+		if err != nil {
+			s.logger.WithFields(map[string]interface{}{
+				"error":      err.Error(),
+				"profile_id": profile.ID.String(),
+			}).Warn("Failed to fetch hours logs for dashboard")
+			// Continue with partial data
+		} else {
+			now := time.Now()
+			currentMonthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+			for _, log := range hoursLogs {
+				// Only count verified hours
+				if log.Status == "verified" && log.LoggedAt.After(currentMonthStart) || log.LoggedAt.Equal(currentMonthStart) {
+					dashboard.HoursThisMonth += log.Hours
+				}
+			}
+		}
+	}
+
+	// Fetch achievements
+	if s.achievementService != nil {
+		achievements, err := s.achievementService.GetVolunteerAchievements(ctx, profile.ID)
+		if err != nil {
+			s.logger.WithFields(map[string]interface{}{
+				"error":      err.Error(),
+				"profile_id": profile.ID.String(),
+			}).Warn("Failed to fetch achievements for dashboard")
+			// Continue with partial data
+		} else {
+			for _, ach := range achievements {
+				dashboard.Achievements = append(dashboard.Achievements, Achievement{
+					ID:          ach.ID,
+					Name:        ach.Name,
+					Description: ach.Description,
+					IconURL:     getStringValue(ach.IconURL),
+					EarnedAt:    ach.EarnedAt,
+				})
+			}
+		}
 	}
 
 	s.logger.WithField("user_id", userID.String()).Info("Dashboard retrieved successfully")
@@ -447,8 +658,7 @@ func (s *volunteerService) GetAnalytics(ctx context.Context, userID uuid.UUID, d
 		return nil, fmt.Errorf("failed to find volunteer profile: %w", err)
 	}
 
-	// TODO: Fetch analytics data from registrations and hours modules when available
-	// For now, return basic metrics
+	// Initialize analytics response
 	analytics := &AnalyticsResponse{
 		HoursOverTime:        []DataPoint{},
 		EventsByCause:        []CategoryCount{},
@@ -461,6 +671,134 @@ func (s *volunteerService) GetAnalytics(ctx context.Context, userID uuid.UUID, d
 
 	if profile.TotalEvents > 0 {
 		analytics.AverageHoursPerEvent = profile.TotalHours / float64(profile.TotalEvents)
+	}
+
+	// Fetch registrations for analytics
+	if s.registrationService != nil {
+		// Apply date range filter
+		filters := RegistrationFilters{
+			Limit: 1000,
+		}
+		if !dateRange.StartDate.IsZero() {
+			filters.StartDate = &dateRange.StartDate
+		}
+		if !dateRange.EndDate.IsZero() {
+			filters.EndDate = &dateRange.EndDate
+		}
+
+		registrations, err := s.registrationService.ListVolunteerRegistrations(ctx, profile.ID, filters)
+		if err != nil {
+			s.logger.WithFields(map[string]interface{}{
+				"error":      err.Error(),
+				"profile_id": profile.ID.String(),
+			}).Warn("Failed to fetch registrations for analytics")
+			// Continue with partial data
+		} else {
+			// Build cause category counts and organization stats
+			causeCountMap := make(map[string]int)
+			causeHoursMap := make(map[string]float64)
+			orgStatsMap := make(map[uuid.UUID]*OrganizationStat)
+
+			for _, reg := range registrations {
+				// Count events by cause
+				if reg.CauseCategory != "" {
+					causeCountMap[reg.CauseCategory]++
+					if reg.HoursWorked != nil {
+						causeHoursMap[reg.CauseCategory] += *reg.HoursWorked
+					}
+				}
+
+				// Aggregate organization stats
+				if _, exists := orgStatsMap[reg.OrganizationID]; !exists {
+					orgStatsMap[reg.OrganizationID] = &OrganizationStat{
+						OrganizationID:   reg.OrganizationID,
+						OrganizationName: reg.OrganizationName,
+						TotalHours:       0,
+						TotalEvents:      0,
+					}
+				}
+				orgStatsMap[reg.OrganizationID].TotalEvents++
+				if reg.HoursWorked != nil {
+					orgStatsMap[reg.OrganizationID].TotalHours += *reg.HoursWorked
+				}
+			}
+
+			// Convert maps to slices
+			for cause, count := range causeCountMap {
+				analytics.EventsByCause = append(analytics.EventsByCause, CategoryCount{
+					Category: cause,
+					Count:    count,
+				})
+			}
+			for cause, hours := range causeHoursMap {
+				analytics.HoursByCause = append(analytics.HoursByCause, CategoryCount{
+					Category: cause,
+					Count:    0, // Not used for hours
+					Hours:    hours,
+				})
+			}
+			for _, stat := range orgStatsMap {
+				analytics.OrganizationStats = append(analytics.OrganizationStats, *stat)
+			}
+		}
+	}
+
+	// Fetch hours logs for time-series data
+	if s.hoursService != nil {
+		hoursLogs, err := s.hoursService.GetHoursLogsByVolunteer(ctx, profile.ID)
+		if err != nil {
+			s.logger.WithFields(map[string]interface{}{
+				"error":      err.Error(),
+				"profile_id": profile.ID.String(),
+			}).Warn("Failed to fetch hours logs for analytics")
+			// Continue with partial data
+		} else {
+			// Build hours over time (grouped by month)
+			hoursPerMonth := make(map[string]float64)
+
+			for _, log := range hoursLogs {
+				// Only include verified hours
+				if log.Status != "verified" {
+					continue
+				}
+
+				// Apply date range filter
+				if !dateRange.StartDate.IsZero() && log.LoggedAt.Before(dateRange.StartDate) {
+					continue
+				}
+				if !dateRange.EndDate.IsZero() && log.LoggedAt.After(dateRange.EndDate) {
+					continue
+				}
+
+				// Group by month (YYYY-MM format)
+				monthKey := log.LoggedAt.Format("2006-01")
+				hoursPerMonth[monthKey] += log.Hours
+			}
+
+			// Convert to data points and sort
+			for monthKey, hours := range hoursPerMonth {
+				// Parse month key back to time
+				monthTime, err := time.Parse("2006-01", monthKey)
+				if err != nil {
+					continue
+				}
+				analytics.HoursOverTime = append(analytics.HoursOverTime, DataPoint{
+					Date:  monthTime,
+					Value: hours,
+				})
+			}
+
+			// Sort data points by date
+			if len(analytics.HoursOverTime) > 1 {
+				for i := 0; i < len(analytics.HoursOverTime)-1; i++ {
+					for j := i + 1; j < len(analytics.HoursOverTime); j++ {
+						if analytics.HoursOverTime[i].Date.After(analytics.HoursOverTime[j].Date) {
+							analytics.HoursOverTime[i], analytics.HoursOverTime[j] = analytics.HoursOverTime[j], analytics.HoursOverTime[i]
+						}
+					}
+				}
+			}
+		}
 	}
 
 	s.logger.WithField("user_id", userID.String()).Info("Analytics retrieved successfully")
@@ -642,4 +980,22 @@ func (s *volunteerService) CreateVolunteerProfile(ctx context.Context, userID uu
 	}).Info("Volunteer profile created successfully")
 
 	return profile, nil
+}
+
+// Helper functions for handling pointer values
+
+// getFloatValue safely extracts float value from pointer, returns 0 if nil
+func getFloatValue(ptr *float64) float64 {
+	if ptr == nil {
+		return 0
+	}
+	return *ptr
+}
+
+// getStringValue safely extracts string value from pointer, returns empty string if nil
+func getStringValue(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
 }
