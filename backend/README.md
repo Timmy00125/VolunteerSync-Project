@@ -19,13 +19,25 @@ backend/
 │   └── api/                    # Application entry point
 ├── internal/
 │   ├── modules/                # Domain modules (auth, users, orgs, volunteers, etc.)
-│   ├── middleware/             # HTTP middleware
+│   ├── middleware/             # HTTP middleware (auth, CORS, rate limiting, context enrichment)
 │   └── pkg/                    # Shared packages (database, cache, jwt, logging, etc.)
 ├── migrations/                 # Database migrations
 ├── tests/                      # Integration & unit tests
 ├── go.mod                      # Go module definition
-└── go.sum                      # Dependency checksums
+├── go.sum                      # Dependency checksums
+├── WIRING_IMPLEMENTATION.md    # Latest implementation notes (context enrichment, routing)
+└── README.md                   # This file
 ```
+
+## Recent Changes
+
+**2025-10-09**: Completed module wiring and context enrichment middleware
+
+- ✅ All module handlers registered in the router
+- ✅ Context enrichment middleware converts JWT `user_id` string to `uuid.UUID`
+- ✅ Middleware chain properly ordered (logging → recovery → CORS → rate limit → auth → enrichment → RBAC)
+- ⚠️ Module services need implementation (currently placeholder `nil` services)
+- See `WIRING_IMPLEMENTATION.md` for details and migration guide
 
 ## Getting Started
 

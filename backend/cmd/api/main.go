@@ -19,6 +19,15 @@ import (
 	userHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/users/handlers"
 	userServices "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/users/services"
 
+	achievementHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/achievements/handlers"
+	analyticsHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/analytics/handlers"
+	commHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/communications/handlers"
+	hoursHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/hours/handlers"
+	oppHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/opportunities/handlers"
+	orgHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/handlers"
+	regHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/registrations/handlers"
+	volunteerHandlers "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/volunteers/handlers"
+
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/cache"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/database"
@@ -181,21 +190,81 @@ func main() {
 	// Create authenticated router group
 	authenticated := v1.Group("")
 	authenticated.Use(middleware.AuthMiddleware(jwtManager))
+	authenticated.Use(middleware.ContextEnrichmentMiddleware()) // Convert user_id string to UUID
 	authenticated.Use(middleware.RequireAnyRole())
 
 	// User routes
 	usersGroup := authenticated.Group("/users")
 	userHandler.RegisterRoutes(usersGroup)
 
-	// TODO: Register additional module routes as they are completed
-	// - Organizations
-	// - Volunteers
-	// - Opportunities
-	// - Registrations
-	// - Hours tracking
-	// - Communications
-	// - Achievements
-	// - Analytics
+	// TODO: Initialize remaining module services and handlers
+	// For now, we'll create placeholder handlers with nil services to establish routing structure
+	// These should be replaced with proper service initialization once dependencies are resolved
+
+	// Organizations routes
+	orgHandler, err := orgHandlers.NewOrganizationHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create organization handler")
+	}
+	orgsGroup := authenticated.Group("/organizations")
+	orgHandler.RegisterRoutes(orgsGroup)
+
+	// Volunteers routes
+	volunteerHandler, err := volunteerHandlers.NewVolunteerHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create volunteer handler")
+	}
+	volunteersGroup := authenticated.Group("/volunteers")
+	volunteerHandler.RegisterRoutes(volunteersGroup)
+
+	// Opportunities routes (mixed: list/get are public with optional auth, create/update/delete require auth)
+	oppHandler, err := oppHandlers.NewOpportunityHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create opportunity handler")
+	}
+	// Public opportunities routes
+	publicOppsGroup := v1.Group("/opportunities")
+	oppHandler.RegisterRoutes(publicOppsGroup)
+
+	// Registrations routes
+	regHandler, err := regHandlers.NewRegistrationHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create registration handler")
+	}
+	regsGroup := authenticated.Group("/registrations")
+	regHandler.RegisterRoutes(regsGroup)
+
+	// Hours tracking routes
+	hoursHandler, err := hoursHandlers.NewHoursHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create hours handler")
+	}
+	hoursGroup := authenticated.Group("/hours")
+	hoursHandler.RegisterRoutes(hoursGroup)
+
+	// Communications routes (messages and notifications)
+	commHandler, err := commHandlers.NewCommunicationsHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create communications handler")
+	}
+	commGroup := authenticated.Group("/communications")
+	commHandler.RegisterRoutes(commGroup)
+
+	// Achievements routes (mixed: list/get are public, create/award require auth)
+	achievementHandler, err := achievementHandlers.NewAchievementHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create achievement handler")
+	}
+	achievementsGroup := v1.Group("/achievements")
+	achievementHandler.RegisterRoutes(achievementsGroup)
+
+	// Analytics routes
+	analyticsHandler, err := analyticsHandlers.NewAnalyticsHandler(nil, log)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to create analytics handler")
+	}
+	analyticsGroup := authenticated.Group("/analytics")
+	analyticsHandler.RegisterRoutes(analyticsGroup)
 
 	log.Info("All routes registered")
 
