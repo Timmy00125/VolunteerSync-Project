@@ -316,14 +316,16 @@ export default function OpportunitySearchPage() {
               <div className="space-y-2">
                 <Label htmlFor="cause">Cause</Label>
                 <Select
-                  value={tempFilters.cause}
-                  onValueChange={(value) => setTempFilters({ ...tempFilters, cause: value })}
+                  value={tempFilters.cause || 'all'}
+                  onValueChange={(value) =>
+                    setTempFilters({ ...tempFilters, cause: value === 'all' ? '' : value })
+                  }
                 >
                   <SelectTrigger id="cause">
                     <SelectValue placeholder="All causes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All causes</SelectItem>
+                    <SelectItem value="all">All causes</SelectItem>
                     <SelectItem value="education">Education</SelectItem>
                     <SelectItem value="environment">Environment</SelectItem>
                     <SelectItem value="health">Health</SelectItem>
