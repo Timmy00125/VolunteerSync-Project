@@ -747,7 +747,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - React Query provider
   - Auth context provider
 
-- [ ] T107 [P] Volunteer dashboard layout in `frontend/src/app/(dashboard)/volunteer/layout.tsx`
+- [x] T107 [P] Volunteer dashboard layout in `frontend/src/app/(dashboard)/volunteer/layout.tsx`
 
   - Navigation sidebar (Dashboard, Find Opportunities, My Events, Impact, Profile)
   - Header with notifications bell
