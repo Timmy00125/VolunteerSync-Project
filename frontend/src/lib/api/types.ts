@@ -53,16 +53,26 @@ export interface SecurityQuestion {
   answer: string;
 }
 
+/**
+ * AuthTokens - Internal representation for token storage
+ * Used by auth store and localStorage
+ */
 export interface AuthTokens {
   access_token: string;
   refresh_token: string;
   expires_in: number;
-  token_type: string;
+  token_type?: string; // Optional, defaults to 'Bearer'
 }
 
+/**
+ * AuthResponse - API response from /auth/login and /auth/register
+ * Matches OpenAPI spec - tokens are returned as flat fields
+ */
 export interface AuthResponse {
   user: User;
-  tokens: AuthTokens;
+  access_token: string;
+  refresh_token: string;
+  expires_in?: number; // Optional in spec
 }
 
 // ============================================================================

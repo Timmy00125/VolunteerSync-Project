@@ -130,7 +130,14 @@ async function refreshAccessToken(): Promise<string | null> {
     }
 
     const data = await response.json();
-    const newTokens: AuthTokens = data.tokens;
+
+    // Convert flat response to AuthTokens format
+    const newTokens: AuthTokens = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in || 900, // Default to 15 minutes if not provided
+      token_type: 'Bearer',
+    };
 
     setTokens(newTokens);
     return newTokens.access_token;

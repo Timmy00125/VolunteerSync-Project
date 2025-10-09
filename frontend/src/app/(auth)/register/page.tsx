@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { registerSchema, type RegisterFormData, SECURITY_QUESTIONS } from '@/lib/validations/auth';
 import { post } from '@/lib/api/client';
 import { useAuthStore } from '@/store/auth-store';
-import type { AuthResponse } from '@/lib/api/types';
+import type { AuthResponse, AuthTokens } from '@/lib/api/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,8 +88,16 @@ export default function RegisterPage() {
         skipAuth: true,
       });
 
+      // Convert flat response to AuthTokens format for store
+      const tokens: AuthTokens = {
+        access_token: response.access_token,
+        refresh_token: response.refresh_token,
+        expires_in: response.expires_in || 900, // Default to 15 minutes if not provided
+        token_type: 'Bearer',
+      };
+
       // Store user and tokens in auth store
-      login(response.user, response.tokens);
+      login(response.user, tokens);
 
       // Redirect based on user type
       if (data.user_type === 'volunteer') {

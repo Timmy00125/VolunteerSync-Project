@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth';
 import { post } from '@/lib/api/client';
 import { useAuthStore } from '@/store/auth-store';
-import type { AuthResponse } from '@/lib/api/types';
+import type { AuthResponse, AuthTokens } from '@/lib/api/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,9 +71,17 @@ export default function LoginPage() {
         skipAuth: true,
       });
 
+      // Convert flat response to AuthTokens format for store
+      const tokens: AuthTokens = {
+        access_token: response.access_token,
+        refresh_token: response.refresh_token,
+        expires_in: response.expires_in || 900, // Default to 15 minutes if not provided
+        token_type: 'Bearer',
+      };
+
       // Store user and tokens in auth store
       // The auth store persists to localStorage automatically
-      login(response.user, response.tokens);
+      login(response.user, tokens);
 
       // Optional: Set longer expiration for "remember me"
       // This is a placeholder for future implementation
