@@ -26,7 +26,7 @@ This document tracks all TODO items, both from the task list and inline code com
 **Priority**: HIGH  
 **Impact**: Security vulnerabilities, unauthorized access
 
-**Progress**: 3 of 7 items complete (analytics authorization ✅)
+**Progress**: 5 of 7 items complete (analytics authorization ✅, achievements authorization ✅)
 
 #### Backend Issues:
 
@@ -43,11 +43,20 @@ This document tracks all TODO items, both from the task list and inline code com
      - Organization analytics: Verifies organization membership or super admin role
      - Platform analytics: Requires super admin role only
 
-2. **Achievements Authorization**
+2. **Achievements Authorization** ✅ **COMPLETE**
 
    - File: `backend/internal/modules/achievements/handlers/achievement_handlers.go`
-   - Line 176: Check if user is authorized (org admin/coordinator) to create custom achievements
-   - Line 225: Get current user from context (authenticated user) for awarding achievements
+   - ✅ Line 176: Check if user is authorized (org admin/coordinator) to create custom achievements
+   - ✅ Line 225: Get current user from context (authenticated user) for awarding achievements
+   - **Implementation Details**:
+     - Injected `OrganizationRepository` into `AchievementHandler` for membership checks
+     - CreateCustomAchievement: Verifies user is admin/coordinator of organization or super admin
+     - AwardCustomAchievement:
+       - Fetches achievement to determine if it's custom (org-specific) or platform-wide
+       - Custom achievements: Requires admin/coordinator of the organization or super admin
+       - Platform achievements: Requires super admin only
+     - Uses `middleware.MustGetUserUUID()` to get authenticated user from context
+     - Updated `main.go` to wire organization repository to achievement handler
 
 3. **RBAC Middleware Organization Membership**
 
@@ -67,7 +76,7 @@ This document tracks all TODO items, both from the task list and inline code com
 - [x] Add database queries to verify user roles and org membership
 - [x] Update RBAC middleware to perform actual DB lookups (deferred to handler level)
 - [x] Add proper authorization checks to all analytics handlers
-- [ ] Add proper authorization checks to achievement handlers
+- [x] Add proper authorization checks to achievement handlers
 - [ ] Create organization member records on org creation
 - [ ] Add authorization checks before org updates/deletes
 
@@ -328,8 +337,8 @@ Frontend: 0/33 tasks completed ❌
 | `analytics/handlers/analytics_handlers.go`      | 180  | Add authorization check - org member         | HIGH     | ✅ COMPLETE |
 | `analytics/handlers/analytics_handlers.go`      | 224  | Implement proper RBAC                        | HIGH     | ✅ COMPLETE |
 | `analytics/services/analytics_service.go`       | 372  | Implement PDF generation                     | MEDIUM   | ❌          |
-| `achievements/handlers/achievement_handlers.go` | 176  | Check org admin/coordinator auth             | HIGH     | ❌          |
-| `achievements/handlers/achievement_handlers.go` | 225  | Get current user from context                | HIGH     | ❌          |
+| `achievements/handlers/achievement_handlers.go` | 176  | Check org admin/coordinator auth             | HIGH     | ✅ COMPLETE |
+| `achievements/handlers/achievement_handlers.go` | 225  | Get current user from context                | HIGH     | ✅ COMPLETE |
 | `achievements/services/achievement_service.go`  | 356  | Send notification on achievement award       | MEDIUM   | ❌          |
 | `middleware/rbac.go`                            | 131  | Implement org membership DB check            | HIGH     | ✅ COMPLETE |
 | `hours/services/registration_adapter.go`        | 52   | Registration service UpdateHoursInformation  | MEDIUM   | ❌          |

@@ -330,12 +330,12 @@ func main() {
 		log.WithField("error", err.Error()).Fatal("Failed to create communications handler")
 	}
 
-	analyticsHandler, err := analyticsHandlers.NewAnalyticsHandler(analyticsService, log)
+	analyticsHandler, err := analyticsHandlers.NewAnalyticsHandler(analyticsService, orgRepo, volunteerRepo, log)
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("Failed to create analytics handler")
 	}
 
-	achievementHandler, err := achievementHandlers.NewAchievementHandler(achievementService, log)
+	achievementHandler, err := achievementHandlers.NewAchievementHandler(achievementService, orgRepo, log)
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("Failed to create achievement handler")
 	}

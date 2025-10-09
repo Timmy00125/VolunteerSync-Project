@@ -7,7 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/middleware"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/achievements/services"
+	orgRepos "github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/repositories"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
 )
@@ -15,13 +17,22 @@ import (
 // AchievementHandler exposes HTTP handlers for achievement flows
 type AchievementHandler struct {
 	service services.AchievementService
+	orgRepo orgRepos.OrganizationRepository
 	log     *logger.Logger
 }
 
 // NewAchievementHandler constructs an AchievementHandler with required dependencies
-func NewAchievementHandler(service services.AchievementService, log *logger.Logger) (*AchievementHandler, error) {
+func NewAchievementHandler(
+	service services.AchievementService,
+	orgRepo orgRepos.OrganizationRepository,
+	log *logger.Logger,
+) (*AchievementHandler, error) {
 	if service == nil {
 		return nil, fmt.Errorf("achievement handler requires achievement service")
+	}
+
+	if orgRepo == nil {
+		return nil, fmt.Errorf("achievement handler requires organization repository")
 	}
 
 	if log == nil {
@@ -30,6 +41,7 @@ func NewAchievementHandler(service services.AchievementService, log *logger.Logg
 
 	return &AchievementHandler{
 		service: service,
+		orgRepo: orgRepo,
 		log:     log,
 	}, nil
 }
@@ -173,7 +185,44 @@ func (h *AchievementHandler) CreateCustomAchievement(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	// TODO: Check if user is authorized (org admin/coordinator) using middleware
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
+	userRole := middleware.GetUserRole(c)
+
+	// Authorization check: User must be an admin or coordinator of the organization, or a super admin
+	// Super admins can create custom achievements for any organization
+	if userRole != middleware.RoleSuperAdmin {
+		// Check if user is a member of this organization and get their role
+		memberRole, err := h.orgRepo.GetMemberRole(ctx, orgID, userUUID)
+		if err != nil {
+			h.log.WithContext(ctx).ErrorWithErr("Failed to check organization membership", err)
+			h.respondWithError(c, apperrors.NewInternalServerError("failed to verify organization membership"))
+			return
+		}
+
+		// User must be an admin or coordinator to create custom achievements
+		if memberRole == "" {
+			h.log.WithContext(ctx).WithFields(map[string]interface{}{
+				"user_id": userUUID.String(),
+				"org_id":  orgID.String(),
+			}).Warn("Unauthorized attempt to create custom achievement - not a member")
+
+			h.respondWithError(c, apperrors.NewForbiddenError("you must be an admin or coordinator of the organization to create custom achievements"))
+			return
+		}
+
+		// Ensure the user has sufficient permissions (admin or coordinator only)
+		if memberRole != "admin" && memberRole != "coordinator" {
+			h.log.WithContext(ctx).WithFields(map[string]interface{}{
+				"user_id":     userUUID.String(),
+				"org_id":      orgID.String(),
+				"member_role": memberRole,
+			}).Warn("Unauthorized attempt to create custom achievement - insufficient permissions")
+
+			h.respondWithError(c, apperrors.NewForbiddenError("only organization admins and coordinators can create custom achievements"))
+			return
+		}
+	}
 
 	achievement, err := h.service.CreateCustomAchievement(ctx, services.CreateCustomAchievementInput{
 		OrganizationID: orgID,
@@ -190,6 +239,7 @@ func (h *AchievementHandler) CreateCustomAchievement(c *gin.Context) {
 		"achievement_id":  achievement.ID,
 		"organization_id": orgID,
 		"name":            req.Name,
+		"created_by":      userUUID.String(),
 	}).Info("Custom achievement created")
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -222,14 +272,72 @@ func (h *AchievementHandler) AwardCustomAchievement(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	// TODO: Get current user from context (authenticated user)
-	// For now, we'll use a placeholder - this should be set by auth middleware
-	awardedByUserID := uuid.New() // Placeholder - should come from c.GetString("user_id") or similar
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
+	userRole := middleware.GetUserRole(c)
 
+	// Fetch the achievement to verify it exists and get its organization ID (if custom)
+	achievement, err := h.service.GetAchievementByID(ctx, achievementID)
+	if err != nil {
+		h.log.WithContext(ctx).ErrorWithErr("Failed to fetch achievement", err)
+		h.respondWithError(c, apperrors.NewNotFoundError("achievement not found"))
+		return
+	}
+
+	// Authorization check: Only admins/coordinators can manually award achievements
+	// If it's a custom achievement (has organization_id), verify the user is a member of that organization
+	if achievement.OrganizationID != nil {
+		// Custom achievement - user must be admin/coordinator of the organization or super admin
+		if userRole != middleware.RoleSuperAdmin {
+			memberRole, err := h.orgRepo.GetMemberRole(ctx, *achievement.OrganizationID, userUUID)
+			if err != nil {
+				h.log.WithContext(ctx).ErrorWithErr("Failed to check organization membership", err)
+				h.respondWithError(c, apperrors.NewInternalServerError("failed to verify organization membership"))
+				return
+			}
+
+			if memberRole == "" {
+				h.log.WithContext(ctx).WithFields(map[string]interface{}{
+					"user_id":        userUUID.String(),
+					"org_id":         achievement.OrganizationID.String(),
+					"achievement_id": achievementID.String(),
+				}).Warn("Unauthorized attempt to award custom achievement - not a member")
+
+				h.respondWithError(c, apperrors.NewForbiddenError("you must be an admin or coordinator of the organization to award this achievement"))
+				return
+			}
+
+			if memberRole != "admin" && memberRole != "coordinator" {
+				h.log.WithContext(ctx).WithFields(map[string]interface{}{
+					"user_id":        userUUID.String(),
+					"org_id":         achievement.OrganizationID.String(),
+					"achievement_id": achievementID.String(),
+					"member_role":    memberRole,
+				}).Warn("Unauthorized attempt to award custom achievement - insufficient permissions")
+
+				h.respondWithError(c, apperrors.NewForbiddenError("only organization admins and coordinators can award achievements"))
+				return
+			}
+		}
+	} else {
+		// Platform achievement - only super admins can manually award these
+		if userRole != middleware.RoleSuperAdmin {
+			h.log.WithContext(ctx).WithFields(map[string]interface{}{
+				"user_id":        userUUID.String(),
+				"achievement_id": achievementID.String(),
+				"user_role":      userRole,
+			}).Warn("Unauthorized attempt to award platform achievement - not a super admin")
+
+			h.respondWithError(c, apperrors.NewForbiddenError("only super admins can manually award platform achievements"))
+			return
+		}
+	}
+
+	// Award the achievement
 	volunteerAchievement, err := h.service.AwardCustomAchievement(ctx, services.AwardCustomAchievementInput{
 		VolunteerProfileID: req.VolunteerProfileID,
 		AchievementID:      achievementID,
-		AwardedByUserID:    awardedByUserID,
+		AwardedByUserID:    userUUID,
 	})
 	if err != nil {
 		h.respondWithError(c, err)
@@ -239,7 +347,7 @@ func (h *AchievementHandler) AwardCustomAchievement(c *gin.Context) {
 	h.log.WithFields(map[string]interface{}{
 		"achievement_id":       achievementID,
 		"volunteer_profile_id": req.VolunteerProfileID,
-		"awarded_by_user_id":   awardedByUserID,
+		"awarded_by_user_id":   userUUID.String(),
 	}).Info("Custom achievement awarded")
 
 	c.JSON(http.StatusCreated, gin.H{
