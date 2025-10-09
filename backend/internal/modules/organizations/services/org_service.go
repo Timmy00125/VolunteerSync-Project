@@ -60,12 +60,14 @@ type OrganizationService interface {
 	// DeleteOrganization soft deletes an organization (admin only)
 	DeleteOrganization(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) error
 
-	// InviteMember invites a user to join an organization (admin only, FR-014)
-	// This will be implemented when the Organization_Member module is ready
-	// InviteMember(ctx context.Context, orgID, userID, inviterID uuid.UUID, role string) error
+	// GetTeamMembers retrieves all team members of an organization
+	GetTeamMembers(ctx context.Context, orgID uuid.UUID, requestingUserID uuid.UUID) ([]TeamMemberOutput, error)
 
-	// RemoveMember removes a user from an organization (admin only)
-	// RemoveMember(ctx context.Context, orgID, userID, removerID uuid.UUID) error
+	// InviteMember invites a user to join an organization as a team member (admin only, FR-014)
+	InviteMember(ctx context.Context, input InviteMemberInput, inviterID uuid.UUID) error
+
+	// RemoveMember removes a user from an organization team (admin only)
+	RemoveMember(ctx context.Context, orgID, userID, removerID uuid.UUID) error
 }
 
 // CreateOrganizationInput represents the input for creating a new organization
@@ -130,6 +132,24 @@ type PaginationInfo struct {
 	TotalItems int  `json:"total_items"`
 	HasNext    bool `json:"has_next"`
 	HasPrev    bool `json:"has_prev"`
+}
+
+// TeamMemberOutput represents a team member with user details
+type TeamMemberOutput struct {
+	ID        string                        `json:"id"`
+	UserID    string                        `json:"user_id"`
+	FirstName string                        `json:"first_name"`
+	LastName  string                        `json:"last_name"`
+	Email     string                        `json:"email"`
+	Role      models.OrganizationMemberRole `json:"role"`
+	JoinedAt  time.Time                     `json:"joined_at"`
+}
+
+// InviteMemberInput represents the input for inviting a team member
+type InviteMemberInput struct {
+	OrganizationID uuid.UUID
+	Email          string
+	Role           models.OrganizationMemberRole
 }
 
 // organizationService is the concrete implementation of OrganizationService
@@ -570,6 +590,151 @@ func (s *organizationService) geocodeOrganization(ctx context.Context, org *mode
 		"lat":      lat,
 		"lng":      lng,
 	}).Debug("Organization geocoded successfully")
+
+	return nil
+}
+
+// GetTeamMembers retrieves all team members of an organization
+func (s *organizationService) GetTeamMembers(ctx context.Context, orgID uuid.UUID, requestingUserID uuid.UUID) ([]TeamMemberOutput, error) {
+	// Validate that the requesting user is a member (admin or coordinator) of the organization
+	role, err := s.repo.GetMemberRole(ctx, orgID, requestingUserID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID.String(),
+			"user_id": requestingUserID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to check user membership")
+		return nil, apperrors.NewInternalServerError("failed to verify membership")
+	}
+
+	if role == "" {
+		return nil, apperrors.NewUnauthorizedError("not a member of this organization")
+	}
+
+	// Get all members
+	members, err := s.repo.ListMembers(ctx, orgID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id": orgID.String(),
+			"error":  err.Error(),
+		}).Error("Failed to list organization members")
+		return nil, apperrors.NewInternalServerError("failed to retrieve team members")
+	}
+
+	// Note: For now, we're returning member data without user details (first_name, last_name, email)
+	// These would need to be fetched from the auth/users module via a cross-module call
+	// For now, we'll return what we have
+	output := make([]TeamMemberOutput, len(members))
+	for i, member := range members {
+		output[i] = TeamMemberOutput{
+			ID:        member.ID.String(),
+			UserID:    member.UserID.String(),
+			FirstName: "", // TODO: Fetch from users module
+			LastName:  "", // TODO: Fetch from users module
+			Email:     "", // TODO: Fetch from users module
+			Role:      member.Role,
+			JoinedAt:  member.JoinedAt,
+		}
+	}
+
+	return output, nil
+}
+
+// InviteMember invites a user to join an organization as a team member (admin only)
+func (s *organizationService) InviteMember(ctx context.Context, input InviteMemberInput, inviterID uuid.UUID) error {
+	// Validate that the inviter is an admin of the organization
+	role, err := s.repo.GetMemberRole(ctx, input.OrganizationID, inviterID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  input.OrganizationID.String(),
+			"user_id": inviterID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to check inviter membership")
+		return apperrors.NewInternalServerError("failed to verify membership")
+	}
+
+	if role != models.OrgRoleAdmin {
+		return apperrors.NewForbiddenError("only admins can invite team members")
+	}
+
+	// Validate input
+	if err := validateEmail(input.Email); err != nil {
+		return apperrors.NewValidationError("invalid email format", nil)
+	}
+
+	if input.Role != models.OrgRoleAdmin && input.Role != models.OrgRoleCoordinator {
+		return apperrors.NewValidationError("invalid role: must be 'admin' or 'coordinator'", nil)
+	}
+
+	// TODO: Look up user by email in the auth/users module
+	// For now, this is a placeholder - in a full implementation, we would:
+	// 1. Check if a user with this email exists
+	// 2. If not, send an invitation email
+	// 3. If yes, add them directly as a member
+	// This requires cross-module communication with the auth module
+
+	// For now, return an error indicating this feature needs user lookup
+	return apperrors.NewValidationError("user lookup not implemented - requires auth module integration", nil)
+}
+
+// RemoveMember removes a user from an organization team (admin only)
+func (s *organizationService) RemoveMember(ctx context.Context, orgID, userID, removerID uuid.UUID) error {
+	// Validate that the remover is an admin of the organization
+	role, err := s.repo.GetMemberRole(ctx, orgID, removerID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID.String(),
+			"user_id": removerID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to check remover membership")
+		return apperrors.NewInternalServerError("failed to verify membership")
+	}
+
+	if role != models.OrgRoleAdmin {
+		return apperrors.NewForbiddenError("only admins can remove team members")
+	}
+
+	// Check that the user being removed is not the last admin
+	members, err := s.repo.ListMembers(ctx, orgID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id": orgID.String(),
+			"error":  err.Error(),
+		}).Error("Failed to list members")
+		return apperrors.NewInternalServerError("failed to verify member status")
+	}
+
+	// Count admins and check if we're removing the last one
+	adminCount := 0
+	isRemovingAdmin := false
+	for _, member := range members {
+		if member.Role == models.OrgRoleAdmin {
+			adminCount++
+			if member.UserID == userID {
+				isRemovingAdmin = true
+			}
+		}
+	}
+
+	if isRemovingAdmin && adminCount <= 1 {
+		return apperrors.NewValidationError("cannot remove the last admin from an organization", nil)
+	}
+
+	// Remove the member
+	if err := s.repo.RemoveMember(ctx, orgID, userID); err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID.String(),
+			"user_id": userID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to remove member")
+		return apperrors.NewInternalServerError("failed to remove team member")
+	}
+
+	s.logger.WithFields(map[string]interface{}{
+		"org_id":     orgID.String(),
+		"user_id":    userID.String(),
+		"removed_by": removerID.String(),
+	}).Info("Team member removed successfully")
 
 	return nil
 }

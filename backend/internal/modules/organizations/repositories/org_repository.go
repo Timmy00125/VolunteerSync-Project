@@ -75,6 +75,9 @@ type OrganizationRepository interface {
 	// RemoveMember removes a user from an organization (soft delete)
 	RemoveMember(ctx context.Context, orgID, userID uuid.UUID) error
 
+	// ListMembers retrieves all members of an organization with their user details
+	ListMembers(ctx context.Context, orgID uuid.UUID) ([]models.OrganizationMember, error)
+
 	// FindMemberByOrgAndUser retrieves a membership record by organization and user ID
 	FindMemberByOrgAndUser(ctx context.Context, orgID, userID uuid.UUID) (*models.OrganizationMember, error)
 
@@ -443,6 +446,25 @@ func (r *gormOrganizationRepository) RemoveMember(ctx context.Context, orgID, us
 	}
 
 	return nil
+}
+
+// ListMembers retrieves all members of an organization with their user details
+func (r *gormOrganizationRepository) ListMembers(ctx context.Context, orgID uuid.UUID) ([]models.OrganizationMember, error) {
+	if orgID == uuid.Nil {
+		return nil, fmt.Errorf("organization ID is required")
+	}
+
+	var members []models.OrganizationMember
+	result := r.db.WithContext(ctx).
+		Where("organization_id = ?", orgID).
+		Order("created_at ASC").
+		Find(&members)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list members: %w", result.Error)
+	}
+
+	return members, nil
 }
 
 // FindMemberByOrgAndUser retrieves a membership record by organization and user ID

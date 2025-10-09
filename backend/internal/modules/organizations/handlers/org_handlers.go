@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/models"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/modules/organizations/services"
 	apperrors "github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/errors"
 	"github.com/Timmy00125/VolunteerSync-Project/backend/internal/pkg/logger"
@@ -44,6 +45,11 @@ func (h *OrganizationHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	// Public routes
 	rg.GET("", h.ListOrganizations)   // GET /organizations
 	rg.GET("/:id", h.GetOrganization) // GET /organizations/:id
+
+	// Team management routes (require authentication)
+	rg.GET("/:id/team", h.GetTeam)                     // GET /organizations/:id/team
+	rg.POST("/:id/team/invite", h.InviteTeamMember)    // POST /organizations/:id/team/invite
+	rg.DELETE("/:id/team/:userId", h.RemoveTeamMember) // DELETE /organizations/:id/team/:userId
 
 	// Protected routes (require authentication)
 	// These would be added to a separate group with auth middleware
@@ -360,4 +366,148 @@ func (h *OrganizationHandler) DeleteOrganization(c *gin.Context) {
 // respondWithError is a helper to send error responses
 func (h *OrganizationHandler) respondWithError(c *gin.Context, err error) {
 	apperrors.HandleError(c, err)
+}
+
+// GetTeam handles GET /organizations/:id/team
+// Returns all team members of an organization
+func (h *OrganizationHandler) GetTeam(c *gin.Context) {
+	idParam := c.Param("id")
+	orgID, err := uuid.Parse(idParam)
+	if err != nil {
+		h.respondWithError(c, apperrors.NewValidationError("invalid organization ID", map[string]interface{}{
+			"id": idParam,
+		}))
+		return
+	}
+
+	// Get authenticated user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
+		return
+	}
+
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Get team members
+	members, err := h.service.GetTeamMembers(ctx, orgID, userUUID)
+	if err != nil {
+		h.respondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": members})
+}
+
+// InviteTeamMemberRequest represents the request body for inviting a team member
+type inviteTeamMemberRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	Role  string `json:"role" binding:"required,oneof=admin coordinator"`
+}
+
+// InviteTeamMember handles POST /organizations/:id/team/invite
+// Invites a user to join an organization team (admin only)
+func (h *OrganizationHandler) InviteTeamMember(c *gin.Context) {
+	idParam := c.Param("id")
+	orgID, err := uuid.Parse(idParam)
+	if err != nil {
+		h.respondWithError(c, apperrors.NewValidationError("invalid organization ID", map[string]interface{}{
+			"id": idParam,
+		}))
+		return
+	}
+
+	var req inviteTeamMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.respondWithError(c, apperrors.NewBadRequestError("invalid request payload").WithError(err))
+		return
+	}
+
+	// Get authenticated user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
+		return
+	}
+
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Parse role
+	var role models.OrganizationMemberRole
+	if req.Role == "admin" {
+		role = models.OrgRoleAdmin
+	} else {
+		role = models.OrgRoleCoordinator
+	}
+
+	// Invite member
+	input := services.InviteMemberInput{
+		OrganizationID: orgID,
+		Email:          req.Email,
+		Role:           role,
+	}
+
+	if err := h.service.InviteMember(ctx, input, userUUID); err != nil {
+		h.respondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "team member invited successfully"})
+}
+
+// RemoveTeamMember handles DELETE /organizations/:id/team/:userId
+// Removes a user from an organization team (admin only)
+func (h *OrganizationHandler) RemoveTeamMember(c *gin.Context) {
+	idParam := c.Param("id")
+	orgID, err := uuid.Parse(idParam)
+	if err != nil {
+		h.respondWithError(c, apperrors.NewValidationError("invalid organization ID", map[string]interface{}{
+			"id": idParam,
+		}))
+		return
+	}
+
+	userIDParam := c.Param("userId")
+	removeUserID, err := uuid.Parse(userIDParam)
+	if err != nil {
+		h.respondWithError(c, apperrors.NewValidationError("invalid user ID", map[string]interface{}{
+			"user_id": userIDParam,
+		}))
+		return
+	}
+
+	// Get authenticated user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
+		return
+	}
+
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Remove member
+	if err := h.service.RemoveMember(ctx, orgID, removeUserID, userUUID); err != nil {
+		h.respondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }
