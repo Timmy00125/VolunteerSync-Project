@@ -685,7 +685,7 @@ This task list implements the complete VolunteerSync platform following Test-Dri
 
 ### Frontend - Shared Infrastructure
 
-- [ ] T097 [P] API client setup in `frontend/src/lib/api/client.ts`
+- [x] T097 [P] API client setup in `frontend/src/lib/api/client.ts`
 
   - Axios or fetch wrapper
   - JWT token handling (access + refresh)
