@@ -8,5 +8,6 @@ export * from './client';
 export * from './types';
 export * from './query-client';
 export * from './hooks/volunteers';
+export * from './hooks/opportunities';
 
 export { default as apiClient } from './client';

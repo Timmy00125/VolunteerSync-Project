@@ -417,6 +417,50 @@ export async function updateVolunteerProfile(
 }
 
 // ============================================================================
+// Opportunity API Methods
+// ============================================================================
+
+/**
+ * Search opportunities with filters
+ */
+export async function searchOpportunities(
+  params?: import('./types').OpportunitySearchParams
+): Promise<import('./types').PaginatedResponse<import('./types').Opportunity>> {
+  // Build query string from params
+  const queryParams = new URLSearchParams();
+
+  if (params) {
+    if (params.search) queryParams.append('search', params.search);
+    if (params.latitude !== undefined) queryParams.append('latitude', params.latitude.toString());
+    if (params.longitude !== undefined)
+      queryParams.append('longitude', params.longitude.toString());
+    if (params.radius !== undefined) queryParams.append('radius_km', params.radius.toString());
+    if (params.cause) queryParams.append('cause', params.cause);
+    if (params.start_date) queryParams.append('start_date_from', params.start_date);
+    if (params.end_date) queryParams.append('start_date_to', params.end_date);
+    if (params.min_age !== undefined) queryParams.append('min_age', params.min_age.toString());
+    if (params.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params.limit !== undefined) queryParams.append('limit', params.limit.toString());
+    if (params.skills && params.skills.length > 0) {
+      params.skills.forEach((skill) => queryParams.append('skills', skill));
+    }
+  }
+
+  const queryString = queryParams.toString();
+  const endpoint = queryString ? `/opportunities?${queryString}` : '/opportunities';
+
+  return get<import('./types').PaginatedResponse<import('./types').Opportunity>>(endpoint);
+}
+
+/**
+ * Get opportunity by ID
+ */
+export async function getOpportunityById(id: string): Promise<import('./types').Opportunity> {
+  const response = await get<{ data: import('./types').Opportunity }>(`/opportunities/${id}`);
+  return response.data;
+}
+
+// ============================================================================
 // Default Export
 // ============================================================================
 
@@ -434,4 +478,6 @@ export default {
   getVolunteerDashboard,
   getVolunteerProfile,
   updateVolunteerProfile,
+  searchOpportunities,
+  getOpportunityById,
 };

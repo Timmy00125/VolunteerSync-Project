@@ -767,14 +767,14 @@ This task list implements the complete VolunteerSync platform following Test-Dri
   - Recent events list
   - Upcoming events
 
-- [ ] T110 [P] Volunteer profile page in `frontend/src/app/(dashboard)/volunteer/profile/page.tsx`
+- [x] T110 [P] Volunteer profile page in `frontend/src/app/(dashboard)/volunteer/profile/page.tsx`
 
   - Profile form (bio, location, photo, availability, skills, interests)
   - Privacy settings
   - Emergency contact
   - Save/update with API call
 
-- [ ] T111 Opportunity search page in `frontend/src/app/(dashboard)/volunteer/opportunities/page.tsx`
+- [x] T111 Opportunity search page in `frontend/src/app/(dashboard)/volunteer/opportunities/page.tsx`
 
   - Search filters (location, radius, cause, date range, skills)
   - Map view with Leaflet
