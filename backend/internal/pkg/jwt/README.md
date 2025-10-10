@@ -7,8 +7,11 @@ This package provides JWT (JSON Web Token) utilities for the VolunteerSync platf
 - **Access Tokens**: Short-lived tokens (15 minutes) for API authentication
 - **Refresh Tokens**: Long-lived tokens (7 days) for obtaining new access tokens
 - **Token Rotation**: Secure refresh token rotation to prevent reuse attacks
+- **Sliding Window Sessions**: Active users get session extended on each refresh (7 days from last activity)
 - **Type Safety**: Separate validation for access and refresh tokens
 - **Comprehensive Error Handling**: Detailed error types for all failure scenarios
+- **Rate Limiting**: Token refresh is rate-limited (20 requests per 15 minutes)
+- **Retry Logic**: Automatic retry for Redis operations (3 attempts with exponential backoff)
 
 ## Architecture
 
