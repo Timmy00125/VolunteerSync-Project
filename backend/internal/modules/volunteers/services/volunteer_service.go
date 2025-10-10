@@ -276,7 +276,18 @@ func (s *volunteerService) GetVolunteerProfile(ctx context.Context, userID uuid.
 	profile, err := s.repo.FindVolunteerProfileByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, repositories.ErrVolunteerProfileNotFound) {
-			return nil, ErrVolunteerProfileNotFound
+			// Profile doesn't exist - auto-create it
+			s.logger.WithField("user_id", userID.String()).Info("Volunteer profile not found, creating new profile")
+			newProfile, createErr := s.CreateVolunteerProfile(ctx, userID)
+			if createErr != nil {
+				s.logger.WithFields(map[string]interface{}{
+					"error":   createErr.Error(),
+					"user_id": userID.String(),
+				}).Error("Failed to auto-create volunteer profile")
+				return nil, ErrVolunteerProfileNotFound
+			}
+			s.logger.WithField("user_id", userID.String()).Info("Volunteer profile auto-created successfully")
+			return newProfile, nil
 		}
 		s.logger.WithFields(map[string]interface{}{
 			"error":   err.Error(),
@@ -482,13 +493,26 @@ func (s *volunteerService) GetDashboard(ctx context.Context, userID uuid.UUID) (
 	profile, err := s.repo.FindVolunteerProfileByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, repositories.ErrVolunteerProfileNotFound) {
-			return nil, ErrVolunteerProfileNotFound
+			// Profile doesn't exist - this can happen if user registered before volunteer
+			// profile auto-creation was implemented. Create it now.
+			s.logger.WithField("user_id", userID.String()).Info("Volunteer profile not found, creating new profile")
+			newProfile, createErr := s.CreateVolunteerProfile(ctx, userID)
+			if createErr != nil {
+				s.logger.WithFields(map[string]interface{}{
+					"error":   createErr.Error(),
+					"user_id": userID.String(),
+				}).Error("Failed to auto-create volunteer profile")
+				return nil, ErrVolunteerProfileNotFound
+			}
+			s.logger.WithField("user_id", userID.String()).Info("Volunteer profile auto-created successfully")
+			profile = newProfile
+		} else {
+			s.logger.WithFields(map[string]interface{}{
+				"error":   err.Error(),
+				"user_id": userID.String(),
+			}).Error("Failed to find volunteer profile")
+			return nil, fmt.Errorf("failed to find volunteer profile: %w", err)
 		}
-		s.logger.WithFields(map[string]interface{}{
-			"error":   err.Error(),
-			"user_id": userID.String(),
-		}).Error("Failed to find volunteer profile")
-		return nil, fmt.Errorf("failed to find volunteer profile: %w", err)
 	}
 
 	// Initialize dashboard response
