@@ -11,5 +11,6 @@ export * from './hooks/volunteers';
 export * from './hooks/opportunities';
 export * from './hooks/registrations';
 export * from './hooks/organizations';
+export * from './hooks/notifications';
 
 export { default as apiClient } from './client';

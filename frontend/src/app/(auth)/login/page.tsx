@@ -16,7 +16,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
@@ -31,11 +31,15 @@ import { Card } from '@/components/ui/card';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Get redirect URL from query params if present
+  const redirectUrl = searchParams.get('redirect');
 
   const {
     register,
@@ -83,6 +87,9 @@ export default function LoginPage() {
       // The auth store persists to localStorage automatically
       login(response.user, tokens);
 
+      // Set a cookie for middleware to read (server-side route protection)
+      document.cookie = `auth-user-type=${response.user.user_type}; path=/; max-age=${tokens.expires_in}; samesite=strict`;
+
       // Optional: Set longer expiration for "remember me"
       // This is a placeholder for future implementation
       // In production, you might want to adjust token expiration on the backend
@@ -92,8 +99,10 @@ export default function LoginPage() {
         console.log('Remember me enabled - session will persist');
       }
 
-      // Redirect based on user type
-      if (response.user.user_type === 'volunteer') {
+      // Redirect to the intended page or default dashboard
+      if (redirectUrl) {
+        router.push(redirectUrl);
+      } else if (response.user.user_type === 'volunteer') {
         router.push('/volunteer'); // Volunteer dashboard
       } else if (response.user.user_type === 'organization_admin') {
         router.push('/organization'); // Organization dashboard

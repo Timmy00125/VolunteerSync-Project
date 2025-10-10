@@ -13,20 +13,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/auth-store';
+import { post } from '@/lib/api/client';
 
 interface VolunteerHeaderProps {
   /**
    * Number of unread notifications to display in badge
    */
   unreadCount?: number;
-  /**
-   * User information to display in the header
-   */
-  user?: {
-    name: string;
-    email: string;
-    avatar?: string;
-  };
 }
 
 /**
@@ -40,33 +35,48 @@ interface VolunteerHeaderProps {
  *
  * This component is used in the volunteer dashboard layout to provide
  * consistent navigation and user controls across all volunteer pages.
- *
- * @example
- * ```tsx
- * <VolunteerHeader
- *   unreadCount={3}
- *   user={{ name: "Jane Doe", email: "jane@example.com" }}
- * />
- * ```
  */
-export function VolunteerHeader({ unreadCount = 0, user }: VolunteerHeaderProps) {
-  // Default user fallback for development
-  const displayUser = user || {
-    name: 'Volunteer User',
-    email: 'volunteer@example.com',
-  };
+export function VolunteerHeader({ unreadCount = 0 }: VolunteerHeaderProps) {
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
+
+  // Get user data from auth store
+  const displayUser = user
+    ? {
+        name: `${user.first_name} ${user.last_name}`.trim() || user.email,
+        email: user.email,
+        avatar: user.profile_photo_url,
+      }
+    : {
+        name: 'User',
+        email: 'user@example.com',
+      };
 
   // Generate initials from name for avatar fallback
   const initials = displayUser.name
     .split(' ')
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
 
-  const handleLogout = () => {
-    // TODO: Implement logout logic with auth context
-    console.log('Logout clicked');
+  const handleLogout = async () => {
+    try {
+      // Call logout API endpoint
+      await post('/auth/logout', {});
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+      // Continue with logout even if API call fails
+    } finally {
+      // Clear auth state from store (and localStorage)
+      logout();
+
+      // Clear the auth cookie used by middleware
+      document.cookie = 'auth-user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
+
+      // Redirect to login page
+      router.push('/login');
+    }
   };
 
   return (
@@ -132,7 +142,7 @@ export function VolunteerHeader({ unreadCount = 0, user }: VolunteerHeaderProps)
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 px-2" aria-label="User menu">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar} alt={displayUser.name} />
+                <AvatarImage src={displayUser.avatar} alt={displayUser.name} />
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="hidden flex-col items-start text-left md:flex">

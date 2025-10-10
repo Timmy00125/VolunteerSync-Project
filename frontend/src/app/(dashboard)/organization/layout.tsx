@@ -1,5 +1,9 @@
+'use client';
+
 import { OrganizationSidebar } from '@/components/dashboard/OrganizationSidebar';
 import { OrganizationHeader } from '@/components/dashboard/OrganizationHeader';
+import { AuthGuard } from '@/components/shared/AuthGuard';
+import { useUnreadCount } from '@/lib/api';
 
 /**
  * Organization Dashboard Layout
@@ -7,6 +11,7 @@ import { OrganizationHeader } from '@/components/dashboard/OrganizationHeader';
  * Provides the layout structure for all organization dashboard pages.
  *
  * Features:
+ * - Authentication guard (redirects to login if not authenticated)
  * - Left sidebar navigation with active state highlighting
  * - Top header with organization switcher (for multi-org users)
  * - Notifications bell and user menu
@@ -35,63 +40,42 @@ import { OrganizationHeader } from '@/components/dashboard/OrganizationHeader';
  * - /organization/settings → Settings page
  */
 export default function OrganizationDashboardLayout({ children }: { children: React.ReactNode }) {
-  // TODO: Fetch user data, current organization, and unread notification count
-  // This should come from auth context/API
-  const mockUser = {
-    name: 'Jane Coordinator',
-    email: 'jane.coordinator@example.com',
-    avatar: undefined, // Will show initials instead
-  };
+  // Fetch unread notification count
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.unread_count || 0;
 
-  const mockCurrentOrg = {
-    id: '1',
-    name: 'Community Helpers',
-    logo: undefined,
-  };
-
-  // TODO: In production, fetch this from organizations API
-  // This mock shows the organization switcher feature
-  const mockOrganizations = [
-    {
-      id: '1',
-      name: 'Community Helpers',
-      logo: undefined,
-    },
-    {
-      id: '2',
-      name: 'Green Earth Initiative',
-      logo: undefined,
-    },
-  ];
-
-  const mockUnreadCount = 0; // TODO: Get from notifications API
+  // TODO: Fetch user's organizations from API once that endpoint is available
+  // For now, we'll pass empty array which will hide the org switcher
+  const organizations: any[] = [];
+  const currentOrg = undefined; // Will use default in header
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar - Fixed width, full height */}
-      <aside className="hidden w-64 md:block">
-        <OrganizationSidebar />
-      </aside>
+    <AuthGuard requiredUserType="organization_admin">
+      <div className="flex h-screen overflow-hidden bg-background">
+        {/* Sidebar - Fixed width, full height */}
+        <aside className="hidden w-64 md:block">
+          <OrganizationSidebar />
+        </aside>
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header - Fixed at top */}
-        <OrganizationHeader
-          user={mockUser}
-          currentOrganization={mockCurrentOrg}
-          organizations={mockOrganizations}
-          unreadCount={mockUnreadCount}
-        />
+        {/* Main Content Area */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Header - Fixed at top */}
+          <OrganizationHeader
+            currentOrganization={currentOrg}
+            organizations={organizations}
+            unreadCount={unreadCount}
+          />
 
-        {/* Page Content - Scrollable */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto p-6">{children}</div>
-        </main>
+          {/* Page Content - Scrollable */}
+          <main className="flex-1 overflow-y-auto">
+            <div className="container mx-auto p-6">{children}</div>
+          </main>
+        </div>
+
+        {/* Mobile Sidebar Overlay - TODO: Implement mobile menu toggle */}
+        {/* This would be a slide-in overlay for mobile devices */}
+        {/* Implementation can be added in a future iteration with a hamburger menu */}
       </div>
-
-      {/* Mobile Sidebar Overlay - TODO: Implement mobile menu toggle */}
-      {/* This would be a slide-in overlay for mobile devices */}
-      {/* Implementation can be added in a future iteration with a hamburger menu */}
-    </div>
+    </AuthGuard>
   );
 }

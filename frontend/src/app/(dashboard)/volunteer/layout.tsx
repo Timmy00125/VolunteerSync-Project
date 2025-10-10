@@ -1,5 +1,9 @@
+'use client';
+
 import { VolunteerSidebar } from '@/components/dashboard/VolunteerSidebar';
 import { VolunteerHeader } from '@/components/dashboard/VolunteerHeader';
+import { AuthGuard } from '@/components/shared/AuthGuard';
+import { useUnreadCount } from '@/lib/api';
 
 /**
  * Volunteer Dashboard Layout
@@ -7,6 +11,7 @@ import { VolunteerHeader } from '@/components/dashboard/VolunteerHeader';
  * Provides the layout structure for all volunteer dashboard pages.
  *
  * Features:
+ * - Authentication guard (redirects to login if not authenticated)
  * - Left sidebar navigation with active state highlighting
  * - Top header with notifications bell and user menu
  * - Main content area with proper spacing and scroll behavior
@@ -33,37 +38,33 @@ import { VolunteerHeader } from '@/components/dashboard/VolunteerHeader';
  * - etc.
  */
 export default function VolunteerDashboardLayout({ children }: { children: React.ReactNode }) {
-  // TODO: Fetch user data and unread notification count from auth context/API
-  // For now using placeholder data
-  const mockUser = {
-    name: 'Jane Volunteer',
-    email: 'jane@example.com',
-    avatar: undefined, // Will show initials instead
-  };
-
-  const mockUnreadCount = 0; // TODO: Get from notifications API
+  // Fetch unread notification count
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.unread_count || 0;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar - Fixed width, full height */}
-      <aside className="hidden w-64 md:block">
-        <VolunteerSidebar />
-      </aside>
+    <AuthGuard requiredUserType="volunteer">
+      <div className="flex h-screen overflow-hidden bg-background">
+        {/* Sidebar - Fixed width, full height */}
+        <aside className="hidden w-64 md:block">
+          <VolunteerSidebar />
+        </aside>
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header - Fixed at top */}
-        <VolunteerHeader user={mockUser} unreadCount={mockUnreadCount} />
+        {/* Main Content Area */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Header - Fixed at top */}
+          <VolunteerHeader unreadCount={unreadCount} />
 
-        {/* Page Content - Scrollable */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto p-6">{children}</div>
-        </main>
+          {/* Page Content - Scrollable */}
+          <main className="flex-1 overflow-y-auto">
+            <div className="container mx-auto p-6">{children}</div>
+          </main>
+        </div>
+
+        {/* Mobile Sidebar Overlay - TODO: Implement mobile menu toggle */}
+        {/* This would be a slide-in overlay for mobile devices */}
+        {/* Implementation can be added in a future iteration with a hamburger menu */}
       </div>
-
-      {/* Mobile Sidebar Overlay - TODO: Implement mobile menu toggle */}
-      {/* This would be a slide-in overlay for mobile devices */}
-      {/* Implementation can be added in a future iteration with a hamburger menu */}
-    </div>
+    </AuthGuard>
   );
 }
