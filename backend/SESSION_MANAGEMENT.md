@@ -75,7 +75,6 @@ Redis operations retry up to 3 times with exponential backoff:
 - Attempt 1: immediate
 - Attempt 2: +10ms
 - Attempt 3: +20ms
-- Attempt 4: +40ms
 
 Handles transient Redis connection issues gracefully.
 

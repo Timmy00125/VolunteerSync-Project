@@ -432,10 +432,15 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*j
 		return nil, apperrors.NewInternalServerError("failed to persist refresh session").WithError(err)
 	}
 
+	// Log both structured authentication event and descriptive message
 	s.log.WithContext(ctx).
 		WithField("user_id", session.UserID).
 		WithField("old_token_id", oldTokenID).
-		Info("token refresh successful - session extended")
+		LogAuthentication(session.UserID, "refresh", true)
+	
+	s.log.WithContext(ctx).
+		WithField("user_id", session.UserID).
+		Info("token refresh successful - session extended (sliding window)")
 
 	return tokenPair, nil
 }
