@@ -385,6 +385,7 @@ func (s *authService) Login(ctx context.Context, input LoginInput) (*AuthRespons
 }
 
 // RefreshToken performs refresh token rotation, invalidating the old token and returning a new pair.
+// This also extends the session TTL (sliding window) to keep active users logged in.
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*jwt.TokenPair, error) {
 	refreshToken = strings.TrimSpace(refreshToken)
 	if refreshToken == "" {
@@ -425,7 +426,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*j
 		// Continue anyway - better to have duplicate session than fail refresh
 	}
 
-	// Store new session
+	// Store new session with full TTL (implements sliding window for active users)
 	if err := s.storeRefreshSession(ctx, tokenPair.RefreshToken, userID, session.UserRole); err != nil {
 		s.log.WithContext(ctx).Errorf("failed to persist new refresh session: %v", err)
 		return nil, apperrors.NewInternalServerError("failed to persist refresh session").WithError(err)
@@ -434,7 +435,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*j
 	s.log.WithContext(ctx).
 		WithField("user_id", session.UserID).
 		WithField("old_token_id", oldTokenID).
-		LogAuthentication(session.UserID, "refresh", true)
+		Info("token refresh successful - session extended")
 
 	return tokenPair, nil
 }
