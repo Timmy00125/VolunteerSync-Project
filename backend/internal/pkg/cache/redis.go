@@ -99,16 +99,32 @@ func (c *Client) Get(ctx context.Context, key string) (string, error) {
 
 // GetJSON retrieves a JSON value from Redis and unmarshals it into the provided struct
 func (c *Client) GetJSON(ctx context.Context, key string, dest interface{}) error {
-	val, err := c.Get(ctx, key)
-	if err != nil {
-		return err
+	// Retry logic for critical session retrieval operations
+	maxRetries := 3
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		val, err := c.Get(ctx, key)
+		if err == nil {
+			// Successfully retrieved, now unmarshal
+			if err := json.Unmarshal([]byte(val), dest); err != nil {
+				return fmt.Errorf("failed to unmarshal JSON for key %s: %w", key, err)
+			}
+			return nil
+		}
+		lastErr = err
+		
+		// Don't retry if key simply doesn't exist
+		if err.Error() == fmt.Sprintf("key %s not found", key) {
+			return err
+		}
+		
+		// Exponential backoff: 10ms, 20ms, 40ms
+		if attempt < maxRetries-1 {
+			time.Sleep(time.Duration(10*(1<<uint(attempt))) * time.Millisecond)
+		}
 	}
-
-	if err := json.Unmarshal([]byte(val), dest); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON for key %s: %w", key, err)
-	}
-
-	return nil
+	
+	return fmt.Errorf("failed to get JSON after %d attempts: %w", maxRetries, lastErr)
 }
 
 // Set stores a value in Redis with an expiration time
@@ -128,7 +144,23 @@ func (c *Client) SetJSON(ctx context.Context, key string, value interface{}, exp
 		return fmt.Errorf("failed to marshal JSON for key %s: %w", key, err)
 	}
 
-	return c.Set(ctx, key, jsonData, expiration)
+	// Retry logic for critical session storage operations
+	maxRetries := 3
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err = c.Set(ctx, key, jsonData, expiration)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		
+		// Exponential backoff: 10ms, 20ms, 40ms
+		if attempt < maxRetries-1 {
+			time.Sleep(time.Duration(10*(1<<uint(attempt))) * time.Millisecond)
+		}
+	}
+	
+	return fmt.Errorf("failed to set JSON after %d attempts: %w", maxRetries, lastErr)
 }
 
 // Delete removes one or more keys from Redis
@@ -137,11 +169,23 @@ func (c *Client) Delete(ctx context.Context, keys ...string) error {
 		return nil
 	}
 
-	err := c.redis.Del(ctx, keys...).Err()
-	if err != nil {
-		return fmt.Errorf("failed to delete keys: %w", err)
+	// Retry logic for critical delete operations
+	maxRetries := 3
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := c.redis.Del(ctx, keys...).Err()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		
+		// Exponential backoff: 10ms, 20ms, 40ms
+		if attempt < maxRetries-1 {
+			time.Sleep(time.Duration(10*(1<<uint(attempt))) * time.Millisecond)
+		}
 	}
-	return nil
+	
+	return fmt.Errorf("failed to delete keys after %d attempts: %w", maxRetries, lastErr)
 }
 
 // Exists checks if a key exists in Redis
@@ -271,7 +315,12 @@ func (s *SessionStorage) SetSession(ctx context.Context, sessionID string, data 
 // GetSession retrieves a session by ID
 func (s *SessionStorage) GetSession(ctx context.Context, sessionID string, dest interface{}) error {
 	key := s.sessionPrefix + sessionID
-	return s.client.GetJSON(ctx, key, dest)
+	err := s.client.GetJSON(ctx, key, dest)
+	if err != nil {
+		// Log the error but don't expose internal details
+		return fmt.Errorf("session not found or expired")
+	}
+	return nil
 }
 
 // DeleteSession removes a session by ID

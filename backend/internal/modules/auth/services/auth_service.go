@@ -398,15 +398,19 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*j
 
 	session, err := s.getRefreshSession(ctx, tokenID)
 	if err != nil {
+		s.log.WithContext(ctx).Warnf("failed to retrieve refresh session %s: %v", tokenID, err)
 		return nil, apperrors.NewUnauthorizedError("refresh token has been revoked")
 	}
 
+	// Validate that the refresh token hasn't been tampered with
 	tokenPair, oldTokenID, err := s.jwtManager.RefreshTokenPair(refreshToken, session.UserRole)
 	if err != nil {
+		s.log.WithContext(ctx).Warnf("failed to generate new token pair: %v", err)
 		return nil, apperrors.NewUnauthorizedError("failed to refresh token")
 	}
 
 	if oldTokenID != session.TokenID {
+		s.log.WithContext(ctx).Warnf("token ID mismatch: expected %s, got %s", session.TokenID, oldTokenID)
 		return nil, apperrors.NewUnauthorizedError("refresh token mismatch")
 	}
 
@@ -415,15 +419,22 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*j
 		return nil, apperrors.NewInternalServerError("invalid session data").WithError(err)
 	}
 
+	// Delete old session FIRST to prevent reuse attack if storage of new session fails
+	if err := s.refreshSessions.DeleteSession(ctx, session.TokenID); err != nil {
+		s.log.WithContext(ctx).Errorf("failed to delete old refresh session %s: %v", session.TokenID, err)
+		// Continue anyway - better to have duplicate session than fail refresh
+	}
+
+	// Store new session
 	if err := s.storeRefreshSession(ctx, tokenPair.RefreshToken, userID, session.UserRole); err != nil {
+		s.log.WithContext(ctx).Errorf("failed to persist new refresh session: %v", err)
 		return nil, apperrors.NewInternalServerError("failed to persist refresh session").WithError(err)
 	}
 
-	if err := s.refreshSessions.DeleteSession(ctx, session.TokenID); err != nil {
-		s.log.WithContext(ctx).Warnf("failed to delete old refresh session %s: %v", session.TokenID, err)
-	}
-
-	s.log.WithContext(ctx).LogAuthentication(session.UserID, "refresh", true)
+	s.log.WithContext(ctx).
+		WithField("user_id", session.UserID).
+		WithField("old_token_id", oldTokenID).
+		LogAuthentication(session.UserID, "refresh", true)
 
 	return tokenPair, nil
 }
@@ -686,7 +697,21 @@ func (s *authService) storeRefreshSession(ctx context.Context, refreshToken stri
 		ExpiresAt: claims.ExpiresAt.Time,
 	}
 
-	return s.refreshSessions.SetSession(ctx, tokenID, data)
+	if err := s.refreshSessions.SetSession(ctx, tokenID, data); err != nil {
+		s.log.WithContext(ctx).
+			WithField("user_id", userID.String()).
+			WithField("token_id", tokenID).
+			Errorf("failed to store refresh session: %v", err)
+		return err
+	}
+
+	s.log.WithContext(ctx).
+		WithField("user_id", userID.String()).
+		WithField("token_id", tokenID).
+		WithField("expires_at", claims.ExpiresAt.Time.Format(time.RFC3339)).
+		Debug("refresh session stored successfully")
+
+	return nil
 }
 
 func (s *authService) getRefreshSession(ctx context.Context, tokenID string) (*refreshSessionData, error) {
