@@ -309,7 +309,11 @@ func NewSessionStorage(client *Client, sessionPrefix string, defaultExpiry time.
 // SetSession stores a session with the given ID and data
 func (s *SessionStorage) SetSession(ctx context.Context, sessionID string, data interface{}) error {
 	key := s.sessionPrefix + sessionID
-	return s.client.SetJSON(ctx, key, data, s.defaultExpiry)
+	if err := s.client.SetJSON(ctx, key, data, s.defaultExpiry); err != nil {
+		// Log error but provide more context
+		return fmt.Errorf("failed to store session %s: %w", sessionID, err)
+	}
+	return nil
 }
 
 // GetSession retrieves a session by ID
@@ -338,5 +342,16 @@ func (s *SessionStorage) RefreshSession(ctx context.Context, sessionID string) e
 // SessionExists checks if a session exists
 func (s *SessionStorage) SessionExists(ctx context.Context, sessionID string) (bool, error) {
 	key := s.sessionPrefix + sessionID
-	return s.client.Exists(ctx, key)
+	exists, err := s.client.Exists(ctx, key)
+	if err != nil {
+		// On error checking existence, assume it doesn't exist to be safe
+		return false, fmt.Errorf("failed to check session existence: %w", err)
+	}
+	return exists, nil
+}
+
+// GetTTL returns the remaining TTL of a session
+func (s *SessionStorage) GetTTL(ctx context.Context, sessionID string) (time.Duration, error) {
+	key := s.sessionPrefix + sessionID
+	return s.client.TTL(ctx, key)
 }

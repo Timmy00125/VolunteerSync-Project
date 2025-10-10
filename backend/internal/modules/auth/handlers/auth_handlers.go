@@ -21,6 +21,8 @@ type AuthHandlerConfig struct {
 	RegistrationWindow time.Duration
 	LoginLimit         int64
 	LoginWindow        time.Duration
+	RefreshLimit       int64
+	RefreshWindow      time.Duration
 }
 
 // DefaultAuthHandlerConfig returns opinionated defaults aligned with platform requirements.
@@ -30,6 +32,8 @@ func DefaultAuthHandlerConfig() AuthHandlerConfig {
 		RegistrationWindow: 15 * time.Minute,
 		LoginLimit:         5,
 		LoginWindow:        15 * time.Minute,
+		RefreshLimit:       20,  // More generous for refresh tokens
+		RefreshWindow:      15 * time.Minute,
 	}
 }
 
@@ -58,6 +62,12 @@ func NewAuthHandler(service services.AuthService, rateLimiter RateLimiter, log *
 	}
 	if cfg.LoginWindow == 0 {
 		cfg.LoginWindow = DefaultAuthHandlerConfig().LoginWindow
+	}
+	if cfg.RefreshLimit == 0 {
+		cfg.RefreshLimit = DefaultAuthHandlerConfig().RefreshLimit
+	}
+	if cfg.RefreshWindow == 0 {
+		cfg.RefreshWindow = DefaultAuthHandlerConfig().RefreshWindow
 	}
 
 	if log == nil {
@@ -216,6 +226,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // RefreshToken handles POST /auth/refresh.
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	// Apply rate limiting to prevent token refresh abuse
+	if !h.allowRequest(c, "refresh", h.config.RefreshLimit, h.config.RefreshWindow) {
+		return
+	}
+
 	var req refreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.respondWithError(c, apperrors.NewBadRequestError("invalid request payload").WithError(err))
