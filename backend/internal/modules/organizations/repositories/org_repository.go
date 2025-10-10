@@ -72,7 +72,7 @@ type OrganizationRepository interface {
 	// AddMember adds a user as a member of an organization with a specific role
 	AddMember(ctx context.Context, member *models.OrganizationMember) error
 
-	// RemoveMember removes a user from an organization (soft delete)
+	// RemoveMember removes a user from an organization's team
 	RemoveMember(ctx context.Context, orgID, userID uuid.UUID) error
 
 	// ListMembers retrieves all members of an organization with their user details
@@ -96,6 +96,13 @@ type OrganizationRepository interface {
 
 	// UpdateAverageRating updates the average rating for an organization
 	UpdateAverageRating(ctx context.Context, orgID uuid.UUID, rating float64) error
+
+	// FindUserByEmail looks up a user ID by email address
+	// Used for inviting team members
+	FindUserByEmail(ctx context.Context, email string) (uuid.UUID, error)
+
+	// FindOrganizationsByUserID retrieves all organizations a user is a member of
+	FindOrganizationsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Organization, error)
 }
 
 // gormOrganizationRepository is the GORM implementation of OrganizationRepository
@@ -532,4 +539,52 @@ func (r *gormOrganizationRepository) GetMemberRole(ctx context.Context, orgID, u
 	}
 
 	return member.Role, nil
+}
+
+// FindUserByEmail looks up a user ID by email address
+// Used for inviting team members
+func (r *gormOrganizationRepository) FindUserByEmail(ctx context.Context, email string) (uuid.UUID, error) {
+	if email == "" {
+		return uuid.Nil, fmt.Errorf("email is required")
+	}
+
+	var user struct {
+		ID uuid.UUID `gorm:"column:id"`
+	}
+
+	result := r.db.WithContext(ctx).
+		Table("users").
+		Select("id").
+		Where("email = ? AND deleted_at IS NULL", email).
+		First(&user)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return uuid.Nil, fmt.Errorf("user not found with email: %s", email)
+		}
+		return uuid.Nil, fmt.Errorf("failed to lookup user: %w", result.Error)
+	}
+
+	return user.ID, nil
+}
+
+// FindOrganizationsByUserID retrieves all organizations a user is a member of
+func (r *gormOrganizationRepository) FindOrganizationsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Organization, error) {
+	if userID == uuid.Nil {
+		return nil, fmt.Errorf("user ID is required")
+	}
+
+	var orgs []models.Organization
+
+	// Join with organization_members table
+	result := r.db.WithContext(ctx).
+		Joins("INNER JOIN organization_members ON organizations.id = organization_members.organization_id").
+		Where("organization_members.user_id = ?", userID).
+		Find(&orgs)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to find organizations: %w", result.Error)
+	}
+
+	return orgs, nil
 }

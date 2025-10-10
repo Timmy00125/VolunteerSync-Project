@@ -44,6 +44,9 @@ func (h *VolunteerHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	}
 
 	// All volunteer routes require authentication
+	// GET /volunteers/me - Get volunteer profile
+	rg.GET("/me", h.GetVolunteerProfile)
+
 	// PATCH /volunteers/me - Update volunteer profile
 	rg.PATCH("/me", h.UpdateVolunteerProfile)
 
@@ -92,6 +95,26 @@ type privacySettingsDTO struct {
 type notificationSettingsDTO struct {
 	InApp       *bool `json:"in_app"`
 	BrowserPush *bool `json:"browser_push"`
+}
+
+// GetVolunteerProfile handles GET /volunteers/me
+// Retrieves the authenticated user's volunteer profile
+func (h *VolunteerHandler) GetVolunteerProfile(c *gin.Context) {
+	// Get authenticated user UUID from context (set by auth and context enrichment middleware)
+	userUUID := middleware.MustGetUserUUID(c)
+
+	ctx := c.Request.Context()
+
+	// Call service to get profile
+	profile, err := h.service.GetVolunteerProfile(ctx, userUUID)
+	if err != nil {
+		h.respondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": profile,
+	})
 }
 
 // UpdateVolunteerProfile handles PATCH /volunteers/me

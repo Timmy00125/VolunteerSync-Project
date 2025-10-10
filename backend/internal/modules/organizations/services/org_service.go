@@ -68,6 +68,13 @@ type OrganizationService interface {
 
 	// RemoveMember removes a user from an organization team (admin only)
 	RemoveMember(ctx context.Context, orgID, userID, removerID uuid.UUID) error
+
+	// GetDashboard retrieves dashboard metrics for an organization (admin/coordinator only)
+	// Includes metrics, upcoming events, and recent registrations
+	GetDashboard(ctx context.Context, orgID uuid.UUID, requestingUserID uuid.UUID) (*OrganizationDashboard, error)
+
+	// GetUserOrganizations retrieves all organizations the user is a member of
+	GetUserOrganizations(ctx context.Context, userID uuid.UUID) ([]models.Organization, error)
 }
 
 // CreateOrganizationInput represents the input for creating a new organization
@@ -150,6 +157,46 @@ type InviteMemberInput struct {
 	OrganizationID uuid.UUID
 	Email          string
 	Role           models.OrganizationMemberRole
+}
+
+// OrganizationDashboard represents dashboard data for an organization
+type OrganizationDashboard struct {
+	Organization        *models.Organization `json:"organization"`
+	Metrics             DashboardMetrics     `json:"metrics"`
+	UpcomingEvents      []UpcomingEventInfo  `json:"upcoming_events"`
+	RecentRegistrations []RecentRegistration `json:"recent_registrations"`
+}
+
+// DashboardMetrics represents key metrics for an organization dashboard
+type DashboardMetrics struct {
+	TotalVolunteers        int     `json:"total_volunteers"`
+	ActiveVolunteers       int     `json:"active_volunteers"`
+	TotalHours             float64 `json:"total_hours"`
+	HoursThisMonth         float64 `json:"hours_this_month"`
+	TotalEvents            int     `json:"total_events"`
+	UpcomingEvents         int     `json:"upcoming_events"`
+	EventsThisMonth        int     `json:"events_this_month"`
+	VolunteerRetentionRate float64 `json:"volunteer_retention_rate"`
+}
+
+// UpcomingEventInfo represents an upcoming event for dashboard display
+type UpcomingEventInfo struct {
+	ID              uuid.UUID `json:"id"`
+	Title           string    `json:"title"`
+	Date            time.Time `json:"date"`
+	StartTime       time.Time `json:"start_time"`
+	RegisteredCount int       `json:"registered_count"`
+	Capacity        int       `json:"capacity"`
+	Status          string    `json:"status"`
+}
+
+// RecentRegistration represents a recent volunteer registration
+type RecentRegistration struct {
+	ID               uuid.UUID `json:"id"`
+	VolunteerName    string    `json:"volunteer_name"`
+	OpportunityTitle string    `json:"opportunity_title"`
+	RegisteredAt     time.Time `json:"registered_at"`
+	Status           string    `json:"status"`
 }
 
 // organizationService is the concrete implementation of OrganizationService
@@ -666,15 +713,56 @@ func (s *organizationService) InviteMember(ctx context.Context, input InviteMemb
 		return apperrors.NewValidationError("invalid role: must be 'admin' or 'coordinator'", nil)
 	}
 
-	// TODO: Look up user by email in the auth/users module
-	// For now, this is a placeholder - in a full implementation, we would:
-	// 1. Check if a user with this email exists
-	// 2. If not, send an invitation email
-	// 3. If yes, add them directly as a member
-	// This requires cross-module communication with the auth module
+	// Look up user by email
+	userID, err := s.repo.FindUserByEmail(ctx, input.Email)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"email": input.Email,
+			"error": err.Error(),
+		}).Error("Failed to lookup user by email")
+		return apperrors.NewValidationError("no user found with this email address", nil)
+	}
 
-	// For now, return an error indicating this feature needs user lookup
-	return apperrors.NewValidationError("user lookup not implemented - requires auth module integration", nil)
+	// Check if the user is already a member
+	existingRole, err := s.repo.GetMemberRole(ctx, input.OrganizationID, userID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  input.OrganizationID.String(),
+			"user_id": userID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to check existing membership")
+		return apperrors.NewInternalServerError("failed to verify membership status")
+	}
+
+	if existingRole != "" {
+		return apperrors.NewConflictError("user is already a member of this organization")
+	}
+
+	// Add the user as a member
+	member := &models.OrganizationMember{
+		OrganizationID: input.OrganizationID,
+		UserID:         userID,
+		Role:           input.Role,
+		JoinedAt:       time.Now(),
+	}
+
+	if err := s.repo.AddMember(ctx, member); err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  input.OrganizationID.String(),
+			"user_id": userID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to add member")
+		return apperrors.NewInternalServerError("failed to add team member")
+	}
+
+	s.logger.WithFields(map[string]interface{}{
+		"org_id":  input.OrganizationID.String(),
+		"user_id": userID.String(),
+		"role":    input.Role,
+		"email":   input.Email,
+	}).Info("Team member added successfully")
+
+	return nil
 }
 
 // RemoveMember removes a user from an organization team (admin only)
@@ -737,4 +825,78 @@ func (s *organizationService) RemoveMember(ctx context.Context, orgID, userID, r
 	}).Info("Team member removed successfully")
 
 	return nil
+}
+
+// GetDashboard retrieves dashboard metrics for an organization
+func (s *organizationService) GetDashboard(ctx context.Context, orgID uuid.UUID, requestingUserID uuid.UUID) (*OrganizationDashboard, error) {
+	// Validate that the requesting user is a member of the organization
+	role, err := s.repo.GetMemberRole(ctx, orgID, requestingUserID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"org_id":  orgID.String(),
+			"user_id": requestingUserID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to check user membership")
+		return nil, apperrors.NewInternalServerError("failed to verify membership")
+	}
+
+	if role == "" {
+		return nil, apperrors.NewUnauthorizedError("not a member of this organization")
+	}
+
+	// Get organization details
+	org, err := s.repo.FindOrganizationByID(ctx, orgID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrOrganizationNotFound) {
+			return nil, apperrors.NewNotFoundError("Organization")
+		}
+		s.logger.WithFields(map[string]interface{}{
+			"org_id": orgID.String(),
+			"error":  err.Error(),
+		}).Error("Failed to get organization")
+		return nil, apperrors.NewInternalServerError("Failed to retrieve organization")
+	}
+
+	// Initialize dashboard with basic data
+	dashboard := &OrganizationDashboard{
+		Organization: org,
+		Metrics: DashboardMetrics{
+			TotalVolunteers:        org.TotalVolunteers,
+			ActiveVolunteers:       0, // TODO: Calculate from recent registrations
+			TotalHours:             org.TotalHours,
+			HoursThisMonth:         0, // TODO: Calculate from hours logs
+			TotalEvents:            0, // TODO: Count from opportunities
+			UpcomingEvents:         0, // TODO: Count upcoming opportunities
+			EventsThisMonth:        0, // TODO: Count events this month
+			VolunteerRetentionRate: 0, // TODO: Calculate retention rate
+		},
+		UpcomingEvents:      []UpcomingEventInfo{},  // TODO: Fetch from opportunities module
+		RecentRegistrations: []RecentRegistration{}, // TODO: Fetch from registrations module
+	}
+
+	// Note: Full implementation would require cross-module calls to:
+	// 1. Opportunities module - for upcoming events count and details
+	// 2. Registrations module - for recent registrations and active volunteers
+	// 3. Hours module - for hours this month calculation
+	// These are currently placeholders and will be implemented with proper adapters
+
+	return dashboard, nil
+}
+
+// GetUserOrganizations retrieves all organizations the user is a member of
+func (s *organizationService) GetUserOrganizations(ctx context.Context, userID uuid.UUID) ([]models.Organization, error) {
+	if userID == uuid.Nil {
+		return nil, apperrors.NewValidationError("Invalid user ID", nil)
+	}
+
+	orgs, err := s.repo.FindOrganizationsByUserID(ctx, userID)
+	if err != nil {
+		s.logger.WithFields(map[string]interface{}{
+			"user_id": userID.String(),
+			"error":   err.Error(),
+		}).Error("Failed to get user organizations")
+		return nil, apperrors.NewInternalServerError("Failed to retrieve user organizations")
+	}
+
+	return orgs, nil
 }

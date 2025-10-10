@@ -6,6 +6,7 @@ import { useOrganizationDashboard } from '@/lib/api';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { format, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
+import apiClient from '@/lib/api/client';
 
 /**
  * Organization Dashboard Page (T115)
@@ -17,25 +18,32 @@ import { useEffect, useState } from 'react';
  * - Quick analytics summaries
  */
 export default function OrganizationDashboardPage() {
-  // TODO: Get organization ID from auth context or route
-  // For now, using placeholder - this should come from user's organization membership
   const [organizationId, setOrganizationId] = useState<string>('');
+  const [isLoadingOrg, setIsLoadingOrg] = useState(true);
 
-  // In a real implementation, get this from auth context
+  // Fetch user's organizations on mount
   useEffect(() => {
-    // Placeholder: would get from useAuth() hook or similar
-    // const { user } = useAuth();
-    // if (user?.primary_organization_id) {
-    //   setOrganizationId(user.primary_organization_id);
-    // }
-    // For now, setting a mock ID
-    setOrganizationId('org-1');
+    const fetchUserOrganizations = async () => {
+      try {
+        const orgs = await apiClient.getUserOrganizations();
+        if (orgs && orgs.length > 0) {
+          // Use the first organization (in a real app, you might let the user select)
+          setOrganizationId(orgs[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user organizations:', error);
+      } finally {
+        setIsLoadingOrg(false);
+      }
+    };
+
+    fetchUserOrganizations();
   }, []);
 
   const { data: dashboard, isLoading, error } = useOrganizationDashboard(organizationId);
 
   // Loading state
-  if (isLoading || !organizationId) {
+  if (isLoading || isLoadingOrg || !organizationId) {
     return (
       <div className="space-y-8">
         <div className="space-y-2">

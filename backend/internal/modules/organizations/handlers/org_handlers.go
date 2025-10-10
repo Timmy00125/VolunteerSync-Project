@@ -46,6 +46,12 @@ func (h *OrganizationHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("", h.ListOrganizations)   // GET /organizations
 	rg.GET("/:id", h.GetOrganization) // GET /organizations/:id
 
+	// User organizations
+	rg.GET("/me/organizations", h.GetMyOrganizations) // GET /organizations/me/organizations
+
+	// Dashboard route (requires authentication)
+	rg.GET("/:id/dashboard", h.GetDashboard) // GET /organizations/:id/dashboard
+
 	// Team management routes (require authentication)
 	rg.GET("/:id/team", h.GetTeam)                     // GET /organizations/:id/team
 	rg.POST("/:id/team/invite", h.InviteTeamMember)    // POST /organizations/:id/team/invite
@@ -199,6 +205,71 @@ func (h *OrganizationHandler) GetOrganization(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, org)
+}
+
+// GetDashboard handles GET /organizations/:id/dashboard
+// Retrieves dashboard metrics for an organization (admin/coordinator only)
+func (h *OrganizationHandler) GetDashboard(c *gin.Context) {
+	idParam := c.Param("id")
+	orgID, err := uuid.Parse(idParam)
+	if err != nil {
+		h.respondWithError(c, apperrors.NewValidationError("invalid organization ID", map[string]interface{}{
+			"id": idParam,
+		}))
+		return
+	}
+
+	// Get authenticated user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
+		return
+	}
+
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Get dashboard data
+	dashboard, err := h.service.GetDashboard(ctx, orgID, userUUID)
+	if err != nil {
+		h.respondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": dashboard})
+}
+
+// GetMyOrganizations handles GET /organizations/me/organizations
+// Returns all organizations the authenticated user is a member of
+func (h *OrganizationHandler) GetMyOrganizations(c *gin.Context) {
+	// Get authenticated user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("authentication required"))
+		return
+	}
+
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		h.respondWithError(c, apperrors.NewUnauthorizedError("invalid user ID"))
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Get user's organizations
+	orgs, err := h.service.GetUserOrganizations(ctx, userUUID)
+	if err != nil {
+		h.respondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": orgs})
 }
 
 // ListOrganizations handles GET /organizations

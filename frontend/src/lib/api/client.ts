@@ -556,6 +556,20 @@ export async function markNotificationAsRead(notificationId: string): Promise<{ 
 }
 
 // ============================================================================
+// Organization API Methods
+// ============================================================================
+
+/**
+ * Get user's organizations
+ */
+export async function getUserOrganizations(): Promise<import('./types').Organization[]> {
+  const response = await get<{ data: import('./types').Organization[] }>(
+    '/organizations/me/organizations'
+  );
+  return response.data;
+}
+
+// ============================================================================
 // Default Export
 // ============================================================================
 
@@ -578,4 +592,5 @@ export default {
   getNotifications,
   getUnreadCount,
   markNotificationAsRead,
+  getUserOrganizations,
 };

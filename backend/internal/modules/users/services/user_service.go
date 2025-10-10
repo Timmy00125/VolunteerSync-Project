@@ -30,6 +30,20 @@ type UserService interface {
 	// Implements data retention compliance per FR-009 and FR-107
 	// Returns an error if the operation fails
 	DeleteUserAccount(ctx context.Context, userID uuid.UUID) error
+
+	// GetUserOrganizations retrieves all organizations the user is a member of
+	// Returns a list of organizations or an error
+	GetUserOrganizations(ctx context.Context, userID uuid.UUID) ([]OrganizationInfo, error)
+}
+
+// OrganizationInfo represents basic organization information
+type OrganizationInfo struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Slug     string  `json:"slug"`
+	LogoURL  *string `json:"logo_url"`
+	Role     string  `json:"role"` // User's role in the organization
+	JoinedAt string  `json:"joined_at"`
 }
 
 // UpdateUserProfileRequest contains the fields that can be updated in a user profile
@@ -267,4 +281,54 @@ func isValidEmail(email string) bool {
 
 	// Must have @ with characters before and after
 	return atIndex > 0 && atIndex < len(email)-1
+}
+
+// GetUserOrganizations retrieves all organizations the user is a member of
+func (s *userService) GetUserOrganizations(ctx context.Context, userID uuid.UUID) ([]OrganizationInfo, error) {
+	log := s.log.WithContext(ctx).WithField("user_id", userID.String())
+	log.Info("fetching user organizations")
+
+	// Validate user ID
+	if userID == uuid.Nil {
+		log.Error("invalid user ID: nil UUID")
+		return nil, appErrors.NewBadRequestError("User ID is required")
+	}
+
+	// Query organization memberships with organization details
+	var results []struct {
+		OrgID    uuid.UUID `gorm:"column:organization_id"`
+		OrgName  string    `gorm:"column:name"`
+		OrgSlug  string    `gorm:"column:slug"`
+		LogoURL  *string   `gorm:"column:logo_url"`
+		Role     string    `gorm:"column:role"`
+		JoinedAt string    `gorm:"column:joined_at"`
+	}
+
+	err := s.db.WithContext(ctx).
+		Table("organization_members").
+		Select("organization_members.organization_id, organizations.name, organizations.slug, organizations.logo_url, organization_members.role, organization_members.joined_at").
+		Joins("INNER JOIN organizations ON organization_members.organization_id = organizations.id").
+		Where("organization_members.user_id = ? AND organizations.deleted_at IS NULL", userID).
+		Scan(&results).Error
+
+	if err != nil {
+		log.ErrorWithErr("failed to fetch user organizations", err)
+		return nil, appErrors.NewInternalServerError("Failed to retrieve organizations")
+	}
+
+	// Convert to OrganizationInfo
+	organizations := make([]OrganizationInfo, len(results))
+	for i, result := range results {
+		organizations[i] = OrganizationInfo{
+			ID:       result.OrgID.String(),
+			Name:     result.OrgName,
+			Slug:     result.OrgSlug,
+			LogoURL:  result.LogoURL,
+			Role:     result.Role,
+			JoinedAt: result.JoinedAt,
+		}
+	}
+
+	log.WithField("count", len(organizations)).Info("user organizations retrieved successfully")
+	return organizations, nil
 }

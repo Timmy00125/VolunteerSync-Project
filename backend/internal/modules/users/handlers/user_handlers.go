@@ -47,6 +47,7 @@ func (h *UserHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/me", h.GetCurrentUser)
 	rg.PATCH("/me", h.UpdateCurrentUser)
 	rg.DELETE("/me/delete", h.DeleteCurrentUser)
+	rg.GET("/me/organizations", h.GetUserOrganizations)
 }
 
 // updateUserRequest represents the request body for updating user profile.
@@ -203,6 +204,27 @@ func (h *UserHandler) DeleteCurrentUser(c *gin.Context) {
 	// Return success message
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Account deletion requested",
+	})
+}
+
+// GetUserOrganizations handles GET /users/me/organizations
+// Retrieves all organizations the authenticated user is a member of
+func (h *UserHandler) GetUserOrganizations(c *gin.Context) {
+	// Extract user UUID from context (set by auth and context enrichment middleware)
+	userID := middleware.MustGetUserUUID(c)
+
+	ctx := c.Request.Context()
+
+	// Get user's organizations from service
+	organizations, err := h.service.GetUserOrganizations(ctx, userID)
+	if err != nil {
+		h.respondWithError(c, err)
+		return
+	}
+
+	// Return organizations list
+	c.JSON(http.StatusOK, gin.H{
+		"data": organizations,
 	})
 }
 
